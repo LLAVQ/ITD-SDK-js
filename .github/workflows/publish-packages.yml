@@ -21,7 +21,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Install deps
-        run: npm ci
+        run: npm install
 
       - name: Test
         run: npm test
@@ -37,13 +37,17 @@ jobs:
       - name: Rewrite name for GitHub Packages
         run: node -e "const fs=require('fs'); const p='./package.json'; const j=JSON.parse(fs.readFileSync(p,'utf8')); j.name='@friceka/itd-sdk-js'; fs.writeFileSync(p, JSON.stringify(j,null,2)+'\\n');"
 
+      - name: Create .npmrc for GitHub Packages
+        run: echo "@friceka:registry=https://npm.pkg.github.com" > .npmrc
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
           registry-url: https://npm.pkg.github.com
+          scope: '@friceka'
 
       - name: Publish to GitHub Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish --registry=https://npm.pkg.github.com
+        run: npm publish
 
