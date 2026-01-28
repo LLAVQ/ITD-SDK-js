@@ -70,6 +70,71 @@ export class PostsManager {
     }
     
     /**
+     * Создает пост на стене другого пользователя (wall post)
+     * 
+     * @param {string} username - Имя пользователя, на чью стену нужно написать
+     * @param {string} text - Текст поста
+     * @param {string|null} imagePath - Путь к изображению (опционально)
+     * @returns {Promise<Object|null>} Данные созданного поста или null при ошибке
+     */
+    async createWallPost(username, text, imagePath = null) {
+        if (!await this.client.auth.checkAuth()) {
+            console.error('Ошибка: необходимо войти в аккаунт');
+            return null;
+        }
+        
+        try {
+            // Получаем профиль пользователя, чтобы получить его ID
+            const profile = await this.client.users.getUserProfile(username);
+            if (!profile || !profile.id) {
+                console.error(`Ошибка: не удалось получить профиль пользователя ${username}`);
+                return null;
+            }
+            
+            const wallRecipientId = profile.id;
+            
+            // Реальный URL из анализа
+            const postUrl = `${this.client.baseUrl}/api/posts`;
+            
+            // Подготовка данных с wallRecipientId
+            let postData = {
+                content: text,
+                wallRecipientId: wallRecipientId,  // ID получателя поста на стене
+            };
+            
+            // Если есть изображение
+            if (imagePath) {
+                // Сначала загружаем файл через /api/files/upload
+                const uploadedFile = await this.client.files.uploadFile(imagePath);
+                if (!uploadedFile) {
+                    console.error('Ошибка: не удалось загрузить изображение');
+                    return null;
+                }
+                
+                // Затем создаем пост с ID загруженного файла
+                postData.attachments = [uploadedFile.id];
+            }
+            
+            // Создаем пост на стене
+            const response = await this.axios.post(postUrl, postData);
+            
+            if (response.status === 200 || response.status === 201) {
+                return response.data;
+            } else {
+                console.error(`Ошибка создания поста на стене: ${response.status} - ${JSON.stringify(response.data)}`);
+                return null;
+            }
+        } catch (error) {
+            console.error('Исключение при создании поста на стене:', error.message);
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+            }
+            return null;
+        }
+    }
+    
+    /**
      * Получает список постов пользователя или ленту
      * 
      * @param {string|null} username - Имя пользователя (null = лента/свои посты)

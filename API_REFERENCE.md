@@ -63,6 +63,18 @@ client.auth.isAuthenticated = true;
 
 - **Параметры**: `text` (string), `imagePath` (string, опционально).
 
+### createWallPost(username, text, imagePath?)
+
+Создает пост **на стене другого пользователя** (wall post).
+
+- Делается через `POST /api/posts` с телом `{ content, wallRecipientId }`.
+- `wallRecipientId` — это **ID пользователя-получателя**, поэтому метод сначала запрашивает профиль через `getUserProfile(username)` и берет `profile.id`.
+
+- **Параметры**:
+  - `username` — username получателя (string)
+  - `text` — текст поста (string)
+  - `imagePath` — путь к изображению (string, опционально)
+
 ### getPost(postId)
 
 Запрашивает данные конкретного поста.
@@ -248,4 +260,4 @@ if (result.pagination.hasMore) {
 
 ---
 
-**Последнее обновление документации**: 2026-01-27.
+**Последнее обновление документации**: 2026-01-28.

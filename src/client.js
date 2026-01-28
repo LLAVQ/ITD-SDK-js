@@ -240,6 +240,18 @@ export class ITDClient {
     }
     
     /**
+     * Создает пост на стене другого пользователя (wall post)
+     * 
+     * @param {string} username - Имя пользователя, на чью стену нужно написать
+     * @param {string} text - Текст поста
+     * @param {string|null} imagePath - Путь к изображению (опционально)
+     * @returns {Promise<Object|null>} Данные созданного поста или null
+     */
+    async createWallPost(username, text, imagePath = null) {
+        return await this.posts.createWallPost(username, text, imagePath);
+    }
+    
+    /**
      * Редактирует пост (удобный метод)
      * 
      * @param {string} postId - ID поста
