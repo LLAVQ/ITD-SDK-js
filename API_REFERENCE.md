@@ -53,6 +53,36 @@ client.auth.isAuthenticated = true;
 
 При получении ошибки `401 Unauthorized` клиент автоматически обращается к эндпоинту `/api/v1/auth/refresh`, используя данные из `.cookies`. В случае успеха новый токен сохраняется в `.env`, обновляются куки, и исходный запрос повторяется.
 
+**Важно:** Для автоматического обновления токена необходим `refresh_token` в файле `.cookies`. Если его нет, SDK не сможет обновить токен автоматически.
+
+**Проверка наличия refresh_token:**
+```javascript
+if (client.hasRefreshToken()) {
+    console.log('✅ Refresh token доступен, токен будет обновляться автоматически');
+} else {
+    console.log('⚠️  Refresh token не найден - обновите файл .cookies');
+}
+```
+
+**Ручная проверка и обновление токена:**
+```javascript
+// Проверяет валидность токена и обновляет его при необходимости
+const isValid = await client.validateAndRefreshToken();
+if (isValid) {
+    console.log('✅ Токен валиден или успешно обновлен');
+} else {
+    console.log('❌ Токен невалиден и не удалось обновить');
+}
+```
+
+**Рекомендация для множественных запросов с интервалами:**
+Если вы делаете запросы с большими интервалами (более 10-15 минут), рекомендуется проверять токен перед каждым запросом:
+```javascript
+// Перед публикацией поста
+await client.validateAndRefreshToken();
+const post = await client.createPost('Текст поста', 'image.jpg');
+```
+
 ---
 
 ## Методы API: Посты
@@ -136,6 +166,14 @@ client.auth.isAuthenticated = true;
 - `getFollowing(username, page, limit)` — список подписок.
 - `followUser(username)` **/** `unfollowUser(username)` — подписка/отписка.
 - `getUserClan(username)` — получение эмодзи-аватара пользователя.
+
+## Методы API: Управление токенами
+
+- `hasRefreshToken()` — проверяет наличие refresh_token в cookies. Возвращает `boolean`.
+- `validateAndRefreshToken()` — проверяет валидность токена и обновляет его при необходимости. Возвращает `Promise<boolean>`.
+- `refreshAccessToken()` — принудительно обновляет токен через refresh endpoint. Возвращает `Promise<string|null>`.
+
+**Рекомендация:** При множественных запросах с интервалами (более 10-15 минут) вызывайте `validateAndRefreshToken()` перед каждым запросом.
 
 ---
 

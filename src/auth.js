@@ -17,6 +17,20 @@ export class AuthManager {
     }
     
     /**
+     * Проверяет наличие refresh_token в cookies
+     * 
+     * @returns {boolean} True если refresh_token доступен
+     */
+    hasRefreshToken() {
+        try {
+            const cookies = this.client.cookieJar.getCookiesSync(this.client.baseUrl);
+            return cookies.some(c => c.key === 'refresh_token');
+        } catch (e) {
+            return false;
+        }
+    }
+    
+    /**
      * Обновляет accessToken через /api/v1/auth/refresh
      * ВАЖНО: обычно этот endpoint работает только при наличии refresh-cookie,
      * который браузер/сервер поставил ранее.
@@ -24,6 +38,19 @@ export class AuthManager {
      * @returns {Promise<string|null>} accessToken или null
      */
     async refreshAccessToken() {
+        // Проверяем наличие refresh_token перед попыткой обновления
+        if (!this.hasRefreshToken()) {
+            console.error('❌ Не удалось обновить токен: refresh_token не найден в cookies');
+            console.error('💡 Решение:');
+            console.error('   1. Откройте итд.com в браузере и войдите в аккаунт');
+            console.error('   2. Откройте DevTools (F12) → Network');
+            console.error('   3. Найдите любой запрос к итд.com');
+            console.error('   4. Скопируйте значение заголовка Cookie');
+            console.error('   5. Вставьте в файл .cookies в корне проекта');
+            console.error('   6. Убедитесь, что в Cookie есть refresh_token');
+            return null;
+        }
+        
         try {
             const refreshUrl = `${this.client.baseUrl}/api/v1/auth/refresh`;
 
@@ -80,7 +107,13 @@ export class AuthManager {
             return null;
         } catch (error) {
             if (error.response) {
-                console.error('refreshAccessToken failed:', error.response.status, error.response.data);
+                const errorData = error.response.data;
+                if (errorData?.error?.code === 'REFRESH_TOKEN_MISSING') {
+                    console.error('❌ Не удалось обновить токен: refresh_token не найден');
+                    console.error('💡 Решение: обновите файл .cookies из браузера (см. инструкцию выше)');
+                } else {
+                    console.error('refreshAccessToken failed:', error.response.status, error.response.data);
+                }
             } else {
                 console.error('refreshAccessToken failed:', error.message);
             }
@@ -122,5 +155,37 @@ export class AuthManager {
         // Проверяем наличие accessToken - если он есть, считаем что авторизован
         // Реальная проверка происходит на уровне API (401 ошибка)
         return !!(this.client.accessToken || this.isAuthenticated);
+    }
+    
+    /**
+     * Проверяет валидность токена, делая тестовый запрос
+     * Если токен истек и есть refresh_token, автоматически обновляет его
+     * 
+     * @returns {Promise<boolean>} True если токен валиден или успешно обновлен
+     */
+    async validateAndRefreshToken() {
+        if (!this.client.accessToken) {
+            return false;
+        }
+        
+        try {
+            // Делаем легкий запрос для проверки токена
+            const profileUrl = `${this.client.baseUrl}/api/users/me`;
+            const response = await this.client.axios.get(profileUrl);
+            
+            if (response.status === 200) {
+                return true; // Токен валиден
+            }
+            
+            return false;
+        } catch (error) {
+            // Если получили 401, пытаемся обновить токен
+            if (error.response?.status === 401) {
+                const newToken = await this.refreshAccessToken();
+                return !!newToken;
+            }
+            
+            return false;
+        }
     }
 }

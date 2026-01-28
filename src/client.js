@@ -220,6 +220,25 @@ export class ITDClient {
     }
     
     /**
+     * Проверяет наличие refresh_token в cookies
+     * 
+     * @returns {boolean} True если refresh_token доступен для обновления токена
+     */
+    hasRefreshToken() {
+        return this.auth.hasRefreshToken();
+    }
+    
+    /**
+     * Проверяет валидность токена и обновляет его при необходимости
+     * Полезно вызывать перед множественными запросами с большими интервалами
+     * 
+     * @returns {Promise<boolean>} True если токен валиден или успешно обновлен
+     */
+    async validateAndRefreshToken() {
+        return await this.auth.validateAndRefreshToken();
+    }
+    
+    /**
      * Выход из аккаунта
      * 
      * @returns {Promise<boolean>} True если успешно
