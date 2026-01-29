@@ -32,9 +32,11 @@ export class ITDClient {
      * @param {string} [options.projectRoot] - Корень проекта (по умолчанию process.cwd()); .env и .cookies ищутся здесь
      * @param {string} [options.envPath] - Полный путь к .env (переопределяет projectRoot для .env)
      * @param {string} [options.cookiesPath] - Полный путь к .cookies (переопределяет projectRoot для .cookies)
+     * @param {number} [options.requestTimeout] - Таймаут обычных запросов в мс (по умолчанию 60000)
+     * @param {number} [options.uploadTimeout] - Таймаут загрузки файлов и создания поста в мс (по умолчанию 120000)
      */
     constructor(baseUrlOrOptions = null, userAgent = null) {
-        let baseUrl, projectRoot, envPath, cookiesPath;
+        let baseUrl, projectRoot, envPath, cookiesPath, requestTimeout, uploadTimeout;
 
         if (baseUrlOrOptions && typeof baseUrlOrOptions === 'object' && !(baseUrlOrOptions instanceof URL)) {
             const opts = baseUrlOrOptions;
@@ -43,11 +45,15 @@ export class ITDClient {
             projectRoot = opts.projectRoot ?? process.cwd();
             envPath = opts.envPath ?? path.join(projectRoot, '.env');
             cookiesPath = opts.cookiesPath ?? path.join(projectRoot, '.cookies');
+            requestTimeout = opts.requestTimeout ?? 60000;
+            uploadTimeout = opts.uploadTimeout ?? 120000;
         } else {
             projectRoot = process.cwd();
             baseUrl = baseUrlOrOptions || process.env.ITD_BASE_URL || 'https://xn--d1ah4a.com';
             envPath = path.join(projectRoot, '.env');
             cookiesPath = path.join(projectRoot, '.cookies');
+            requestTimeout = 60000;
+            uploadTimeout = 120000;
         }
 
         // Используем реальный домен (IDN: итд.com = xn--d1ah4a.com)
@@ -58,6 +64,11 @@ export class ITDClient {
         /** Пути к .env и .cookies (корень проекта по умолчанию) */
         this.envPath = envPath;
         this.cookiesPath = cookiesPath;
+
+        /** Таймаут обычных запросов (мс). Для загрузки и создания поста используется uploadTimeout. */
+        this.requestTimeout = requestTimeout;
+        /** Таймаут загрузки файлов и создания поста (мс), чтобы не зависать при 504/медленной сети. */
+        this.uploadTimeout = uploadTimeout;
 
         /** @type {string|null} */
         this.accessToken = null;
@@ -78,6 +89,7 @@ export class ITDClient {
         // Создание axios instance + cookie jar
         const axiosConfig = {
             baseURL: this.baseUrl,
+            timeout: requestTimeout,
             withCredentials: true,
             jar: this.cookieJar,
             headers: {

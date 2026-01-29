@@ -60,15 +60,18 @@ const client = new ITDClient({
     baseUrl: 'https://xn--d1ah4a.com',
     userAgent: '...',
     projectRoot: process.cwd(),              // корень проекта (по умолчанию process.cwd())
-    // либо явные пути:
     // envPath: '/path/to/project/.env',
     // cookiesPath: '/path/to/project/.cookies',
+    requestTimeout: 60000,                    // таймаут обычных запросов, мс (по умолчанию 60 с)
+    uploadTimeout: 120000,                    // таймаут загрузки файлов и создания поста, мс (по умолчанию 120 с)
 });
 client.setAccessToken(process.env.ITD_ACCESS_TOKEN);
 ```
 
 - `projectRoot` — директория, в которой ищутся `.env` и `.cookies` (по умолчанию `process.cwd()`).
 - `envPath` / `cookiesPath` — при указании переопределяют пути, собранные из `projectRoot`.
+- `requestTimeout` — таймаут обычных запросов в мс (по умолчанию 60000). Предотвращает бесконечное ожидание при «тяжёлой» сети.
+- `uploadTimeout` — таймаут для загрузки файлов и создания поста в мс (по умолчанию 120000). Используется в `uploadFile`, `createPost`, `createWallPost`.
 
 ### Автоматическое обновление (Refresh Token)
 
@@ -112,6 +115,10 @@ const post = await client.createPost('Текст поста', 'image.jpg');
 
 Создает новый пост. При указании `imagePath` файл предварительно загружается через `/api/files/upload`, после чего ID файла прикрепляется к посту через поле `attachmentIds`.
 
+- **Возвращает:** объект поста при успехе; **`null`** при любой ошибке (сеть, 5xx, 429, не удалось загрузить файл, неверный ответ). Всегда проверяйте результат на `null`.
+- **Таймаут:** для загрузки файла и создания поста используется `uploadTimeout` (по умолчанию 120 с), чтобы запрос не зависал при 504 или медленной сети.
+- **Ретраи:** при 5xx/429 или «API вернул null» рекомендуется повторять запрос в приложении (например, до 3–8 попыток с экспоненциальной задержкой). Встроенных ретраев в SDK нет.
+
 **Важно:** API использует поле `attachmentIds` (массив ID файлов), а не `attachments`. SDK автоматически использует правильное поле.
 
 - **Параметры**: `text` (string), `imagePath` (string, опционально).
@@ -120,6 +127,8 @@ const post = await client.createPost('Текст поста', 'image.jpg');
 
 Создает пост **на стене другого пользователя** (wall post).
 
+- **Возвращает:** объект поста при успехе; **`null`** при любой ошибке. Проверяйте результат на `null`; при 5xx/429 рекомендуется ретраи в приложении.
+- **Таймаут:** используется `uploadTimeout` (по умолчанию 120 с).
 - Делается через `POST /api/posts` с телом `{ content, wallRecipientId, attachmentIds? }`.
 - `wallRecipientId` — это **ID пользователя-получателя**, поэтому метод сначала запрашивает профиль через `getUserProfile(username)` и берет `profile.id`.
 - При указании `imagePath` файл загружается и прикрепляется через `attachmentIds`.
@@ -216,14 +225,14 @@ const post = await client.createPost('Текст поста', 'image.jpg');
 - `search(query, userLimit?, hashtagLimit?)` — универсальный поиск пользователей и хэштегов. Возвращает `{ users: [], hashtags: [] }`.
 - `searchUsers(query, limit?)` — поиск только пользователей.
 - `searchHashtags(query, limit?)` — поиск только хэштегов.
-- `getTopClans()` — рейтинг кланов по количеству участников. Возвращает `{ clans: [{ avatar, memberCount }] }`.
+- `getTopClans()` — рейтинг кланов по количеству участников. **Возвращает массив** `Array<{ avatar, memberCount }>` или **`null`** при ошибке (не объект с полем `clans`).
 - `getWhoToFollow()` — рекомендованные пользователи.
 - `getTrendingHashtags(limit)` — список популярных тегов.
 - `getPostsByHashtag(tagName, limit, cursor)` — поиск постов по тегу. Возвращает `{ posts: [], hashtag: {}, pagination: {} }`.
 
 ### Файлы и репорты
 
-- `uploadFile(filePath)` — загрузка файла через `/api/files/upload`. Возвращает `{ id, url, filename, mimeType, size }`. Используется автоматически при создании поста с изображением.
+- `uploadFile(filePath)` — загрузка файла через `/api/files/upload`. Возвращает `{ id, url, filename, mimeType, size }` или **`null`** при ошибке. Таймаут — `uploadTimeout` (по умолчанию 120 с). Используется автоматически при создании поста с изображением.
 - `report(targetType, targetId, reason?, description?)` — отправка репорта. `targetType`: `"post"`, `"comment"`, `"user"`. Возвращает `{ id, createdAt }`.
 - `reportPost(postId, reason?, description?)` — репорт поста.
 - `reportComment(commentId, reason?, description?)` — репорт комментария.

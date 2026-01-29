@@ -11,8 +11,9 @@ export class FilesManager {
     }
 
     /**
-     * Загружает файл (изображение) на сервер
-     * 
+     * Загружает файл (изображение) на сервер.
+     * Таймаут — client.uploadTimeout (по умолчанию 120 с). При ошибке возвращает null.
+     *
      * @param {string} filePath - Путь к файлу
      * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } или null при ошибке
      */
@@ -36,6 +37,7 @@ export class FilesManager {
             formData.append('file', fs.createReadStream(filePath));
 
             const response = await this.axios.post(uploadUrl, formData, {
+                timeout: this.client.uploadTimeout ?? 120000,
                 headers: {
                     ...formData.getHeaders(),
                 }

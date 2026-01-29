@@ -16,8 +16,10 @@ export class PostsManager {
     }
     
     /**
-     * Создает новый пост
-     * 
+     * Создает новый пост.
+     * При любой ошибке (сеть, 5xx, 429, не удалось загрузить файл) возвращает null.
+     * Таймаут загрузки и создания — client.uploadTimeout (по умолчанию 120 с).
+     *
      * @param {string} text - Текст поста
      * @param {string|null} imagePath - Путь к изображению (опционально)
      * @returns {Promise<Object|null>} Данные созданного поста или null при ошибке
@@ -51,9 +53,11 @@ export class PostsManager {
                 postData.attachmentIds = [uploadedFile.id];
             }
             
-            // Создаем пост (с изображением или без)
-            const response = await this.axios.post(postUrl, postData);
-            
+            // Создаем пост (с изображением или без); увеличенный таймаут для тяжёлых запросов
+            const response = await this.axios.post(postUrl, postData, {
+                timeout: this.client.uploadTimeout ?? 120000,
+            });
+
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             } else {
@@ -71,8 +75,9 @@ export class PostsManager {
     }
     
     /**
-     * Создает пост на стене другого пользователя (wall post)
-     * 
+     * Создает пост на стене другого пользователя (wall post).
+     * При любой ошибке возвращает null. Таймаут — client.uploadTimeout (по умолчанию 120 с).
+     *
      * @param {string} username - Имя пользователя, на чью стену нужно написать
      * @param {string} text - Текст поста
      * @param {string|null} imagePath - Путь к изображению (опционально)
@@ -117,9 +122,11 @@ export class PostsManager {
                 postData.attachmentIds = [uploadedFile.id];
             }
             
-            // Создаем пост на стене
-            const response = await this.axios.post(postUrl, postData);
-            
+            // Создаем пост на стене; увеличенный таймаут для тяжёлых запросов
+            const response = await this.axios.post(postUrl, postData, {
+                timeout: this.client.uploadTimeout ?? 120000,
+            });
+
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             } else {
