@@ -3,27 +3,24 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * Обновляет ITD_ACCESS_TOKEN в .env файле
- * 
+ *
  * @param {string} newToken - Новый access token
+ * @param {string} [envPath] - Путь к .env (по умолчанию process.cwd() + '/.env')
  * @returns {Promise<boolean>} True если успешно
  */
-export async function saveAccessToken(newToken) {
+export async function saveAccessToken(newToken, envPath = null) {
     try {
-        const envPath = path.join(__dirname, '..', '.env');
-        
-        if (!fs.existsSync(envPath)) {
+        const targetPath = envPath ?? path.join(process.cwd(), '.env');
+
+        if (!fs.existsSync(targetPath)) {
             console.warn('⚠️  Файл .env не найден, токен не сохранен');
             return false;
         }
-        
-        let content = fs.readFileSync(envPath, 'utf8');
+
+        let content = fs.readFileSync(targetPath, 'utf8');
         
         // Ищем строку с ITD_ACCESS_TOKEN
         const tokenRegex = /^ITD_ACCESS_TOKEN=.*$/m;
@@ -36,7 +33,7 @@ export async function saveAccessToken(newToken) {
             content += `\nITD_ACCESS_TOKEN=${newToken}\n`;
         }
         
-        fs.writeFileSync(envPath, content, 'utf8');
+        fs.writeFileSync(targetPath, content, 'utf8');
         console.log('✅ Токен сохранен в .env');
         return true;
     } catch (error) {
@@ -47,16 +44,17 @@ export async function saveAccessToken(newToken) {
 
 /**
  * Сохраняет cookies в файл .cookies
- * 
+ *
  * @param {string} newCookieHeader - Новый cookie header
+ * @param {string} [cookiesPath] - Путь к .cookies (по умолчанию process.cwd() + '/.cookies')
  * @returns {Promise<boolean>} True если успешно
  */
-export async function saveCookieHeader(newCookieHeader) {
+export async function saveCookieHeader(newCookieHeader, cookiesPath = null) {
     try {
-        const cookiesPath = path.join(__dirname, '..', '.cookies');
-        
+        const targetPath = cookiesPath ?? path.join(process.cwd(), '.cookies');
+
         // Просто записываем cookies в файл (одна строка)
-        fs.writeFileSync(cookiesPath, newCookieHeader, 'utf8');
+        fs.writeFileSync(targetPath, newCookieHeader, 'utf8');
         console.log('✅ Cookies сохранены в .cookies');
         return true;
     } catch (error) {

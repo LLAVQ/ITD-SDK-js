@@ -5,7 +5,6 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { CookieJar } from 'tough-cookie';
 import { wrapper } from 'axios-cookiejar-support';
 import { AuthManager } from './auth.js';
@@ -20,21 +19,45 @@ import { SearchManager } from './search.js';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 export class ITDClient {
     /**
      * Инициализация клиента
      * 
-     * @param {string} baseUrl - Базовый URL сайта (по умолчанию из .env)
-     * @param {string} userAgent - User-Agent для запросов (по умолчанию из .env)
+     * @param {string|Object} baseUrlOrOptions - Базовый URL сайта или объект опций
+     * @param {string} [userAgent] - User-Agent (если первый аргумент — baseUrl)
+     * 
+     * Опции (если первый аргумент — объект):
+     * @param {string} [options.baseUrl] - Базовый URL сайта
+     * @param {string} [options.userAgent] - User-Agent
+     * @param {string} [options.projectRoot] - Корень проекта (по умолчанию process.cwd()); .env и .cookies ищутся здесь
+     * @param {string} [options.envPath] - Полный путь к .env (переопределяет projectRoot для .env)
+     * @param {string} [options.cookiesPath] - Полный путь к .cookies (переопределяет projectRoot для .cookies)
      */
-    constructor(baseUrl = null, userAgent = null) {
+    constructor(baseUrlOrOptions = null, userAgent = null) {
+        let baseUrl, projectRoot, envPath, cookiesPath;
+
+        if (baseUrlOrOptions && typeof baseUrlOrOptions === 'object' && !(baseUrlOrOptions instanceof URL)) {
+            const opts = baseUrlOrOptions;
+            baseUrl = opts.baseUrl ?? process.env.ITD_BASE_URL ?? 'https://xn--d1ah4a.com';
+            userAgent = opts.userAgent ?? process.env.ITD_USER_AGENT ?? null;
+            projectRoot = opts.projectRoot ?? process.cwd();
+            envPath = opts.envPath ?? path.join(projectRoot, '.env');
+            cookiesPath = opts.cookiesPath ?? path.join(projectRoot, '.cookies');
+        } else {
+            projectRoot = process.cwd();
+            baseUrl = baseUrlOrOptions || process.env.ITD_BASE_URL || 'https://xn--d1ah4a.com';
+            envPath = path.join(projectRoot, '.env');
+            cookiesPath = path.join(projectRoot, '.cookies');
+        }
+
         // Используем реальный домен (IDN: итд.com = xn--d1ah4a.com)
-        this.baseUrl = baseUrl || process.env.ITD_BASE_URL || 'https://xn--d1ah4a.com';
-        this.userAgent = userAgent || process.env.ITD_USER_AGENT || 
+        this.baseUrl = baseUrl;
+        this.userAgent = userAgent || process.env.ITD_USER_AGENT ||
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+        /** Пути к .env и .cookies (корень проекта по умолчанию) */
+        this.envPath = envPath;
+        this.cookiesPath = cookiesPath;
 
         /** @type {string|null} */
         this.accessToken = null;
@@ -178,13 +201,12 @@ export class ITDClient {
      */
     _loadCookiesFromFile() {
         try {
-            const cookiesPath = path.join(__dirname, '..', '.cookies');
-            if (!fs.existsSync(cookiesPath)) {
+            if (!fs.existsSync(this.cookiesPath)) {
                 // Файл не существует - это нормально, просто пропускаем
                 return;
             }
             
-            const cookieHeader = fs.readFileSync(cookiesPath, 'utf8').trim();
+            const cookieHeader = fs.readFileSync(this.cookiesPath, 'utf8').trim();
             if (!cookieHeader) {
                 return;
             }

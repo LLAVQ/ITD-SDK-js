@@ -68,8 +68,8 @@ export class AuthManager {
                 this.client.setAccessToken(newToken);
                 this.isAuthenticated = true;
                 
-                // Сохраняем токен в .env файл
-                await saveAccessToken(newToken);
+                // Сохраняем токен в .env файл (в корне проекта)
+                await saveAccessToken(newToken, this.client.envPath);
                 
                 // Обновляем cookies, если они пришли в ответе
                 if (response.headers['set-cookie']) {
@@ -94,7 +94,7 @@ export class AuthManager {
                         );
                         if (importantCookies.length > 0) {
                             const cookieHeader = importantCookies.map(c => `${c.key}=${c.value}`).join('; ');
-                            await saveCookieHeader(cookieHeader);
+                            await saveCookieHeader(cookieHeader, this.client.cookiesPath);
                         }
                     } catch (e) {
                         console.warn('⚠️  Не удалось сохранить обновленные cookies:', e.message);

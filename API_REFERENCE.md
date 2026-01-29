@@ -30,15 +30,17 @@ import { ITDClient } from 'itd-sdk-js';
 
 Для работы автоматического обновления токена создайте файл `.cookies` в корне проекта. Скопируйте содержимое заголовка `Cookie` из любого сетевого запроса к сайту в браузере и вставьте в этот файл.
 
+**Пути к .env и .cookies:** по умолчанию SDK ищет и сохраняет эти файлы в **корне проекта** (`process.cwd()`). При refresh токена обновлённые значения пишутся в ваш проект, а не в папку пакета. При необходимости можно задать свой корень или явные пути через опции конструктора (см. ниже).
+
 ---
 
 ## Авторизация и сессии
 
 ### Инициализация клиента
 
-JavaScript
+**Простой вариант (корень проекта = текущая рабочая директория):**
 
-```
+```javascript
 import { ITDClient } from 'itd-sdk-js';
 import dotenv from 'dotenv';
 
@@ -48,6 +50,25 @@ const client = new ITDClient();
 client.setAccessToken(process.env.ITD_ACCESS_TOKEN);
 client.auth.isAuthenticated = true;
 ```
+
+**С опциями (projectRoot / envPath / cookiesPath):**
+
+Если скрипт запускается из подпапки или нужны явные пути:
+
+```javascript
+const client = new ITDClient({
+    baseUrl: 'https://xn--d1ah4a.com',
+    userAgent: '...',
+    projectRoot: process.cwd(),              // корень проекта (по умолчанию process.cwd())
+    // либо явные пути:
+    // envPath: '/path/to/project/.env',
+    // cookiesPath: '/path/to/project/.cookies',
+});
+client.setAccessToken(process.env.ITD_ACCESS_TOKEN);
+```
+
+- `projectRoot` — директория, в которой ищутся `.env` и `.cookies` (по умолчанию `process.cwd()`).
+- `envPath` / `cookiesPath` — при указании переопределяют пути, собранные из `projectRoot`.
 
 ### Автоматическое обновление (Refresh Token)
 
