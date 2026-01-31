@@ -1,5 +1,5 @@
 /**
- * Модуль для работы с хэштегами
+ * Hashtags module
  */
 export class HashtagsManager {
     constructor(client) {
@@ -8,10 +8,10 @@ export class HashtagsManager {
     }
 
     /**
-     * Получает трендовые хэштеги
-     * 
-     * @param {number} limit - Количество хэштегов (по умолчанию 10)
-     * @returns {Promise<Object|null>} { hashtags: [] } или null при ошибке
+     * Gets trending hashtags
+     *
+     * @param {number} limit - Number of hashtags (default 10)
+     * @returns {Promise<Object|null>} { hashtags: [] } or null on error
      */
     async getTrending(limit = 10) {
         try {
@@ -21,7 +21,6 @@ export class HashtagsManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                // Структура: { data: { hashtags: [...] } }
                 if (data.data && data.data.hashtags) {
                     return {
                         hashtags: data.data.hashtags
@@ -33,11 +32,11 @@ export class HashtagsManager {
                 }
                 return { hashtags: [] };
             } else {
-                console.error(`Ошибка получения трендовых хэштегов: ${response.status}`);
+                console.error(`Error getting trending hashtags: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении трендовых хэштегов:', error.message);
+            console.error('Exception getting trending hashtags:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -47,19 +46,18 @@ export class HashtagsManager {
     }
 
     /**
-     * Получает посты по хэштегу
-     * 
-     * @param {string} hashtagName - Имя хэштега (без #)
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
-     * @returns {Promise<Object|null>} { posts: [], hashtag: {}, pagination: {} } или null при ошибке
+     * Gets posts by hashtag
+     *
+     * @param {string} hashtagName - Hashtag name (without #)
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
+     * @returns {Promise<Object|null>} { posts: [], hashtag: {}, pagination: {} } or null on error
      */
     async getPostsByHashtag(hashtagName, limit = 20, cursor = null) {
         try {
-            // Убираем # если есть
             const cleanHashtag = hashtagName.replace(/^#/, '');
             const hashtagUrl = `${this.client.baseUrl}/api/hashtags/${encodeURIComponent(cleanHashtag)}/posts`;
-            
+
             const params = { limit };
             if (cursor) {
                 params.cursor = cursor;
@@ -69,8 +67,7 @@ export class HashtagsManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                
-                // Структура: { data: { hashtag: {...} или null, posts: [...], pagination: {...} } }
+
                 if (data.data) {
                     return {
                         hashtag: data.data.hashtag || null,
@@ -78,19 +75,18 @@ export class HashtagsManager {
                         pagination: data.data.pagination || {}
                     };
                 }
-                
-                // Fallback
+
                 return {
                     hashtag: null,
                     posts: data.posts || [],
                     pagination: data.pagination || {}
                 };
             } else {
-                console.error(`Ошибка получения постов по хэштегу: ${response.status}`);
+                console.error(`Error getting posts by hashtag: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении постов по хэштегу:', error.message);
+            console.error('Exception getting posts by hashtag:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);

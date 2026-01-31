@@ -1,14 +1,14 @@
 /**
- * Модуль работы с постами
+ * Posts module
  */
 import fs from 'fs';
 import FormData from 'form-data';
 
 export class PostsManager {
     /**
-     * Управление постами
-     * 
-     * @param {ITDClient} client - Главный клиент
+     * Post management
+     *
+     * @param {ITDClient} client - Main client
      */
     constructor(client) {
         this.client = client;
@@ -16,44 +16,43 @@ export class PostsManager {
     }
     
     /**
-     * Создает новый пост.
-     * При любой ошибке (сеть, 5xx, 429, не удалось загрузить файл) возвращает null.
-     * Таймаут загрузки и создания — client.uploadTimeout (по умолчанию 120 с).
+     * Creates a new post.
+     * Returns null on any error (network, 5xx, 429, upload failure).
+     * Timeout for upload and create — client.uploadTimeout (default 120 s).
      *
-     * @param {string} text - Текст поста
-     * @param {string|null} imagePath - Путь к изображению (опционально)
-     * @returns {Promise<Object|null>} Данные созданного поста или null при ошибке
+     * @param {string} text - Post text
+     * @param {string|null} imagePath - Path to image (optional)
+     * @returns {Promise<Object|null>} Created post data or null on error
      */
     async createPost(text, imagePath = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
         try {
-            // Реальный URL из анализа
+            // API URL
             const postUrl = `${this.client.baseUrl}/api/posts`;
             
-            // Подготовка данных (реальная структура из анализа)
+            // Request payload
             let postData = {
-                content: text,  // Реальное поле называется "content"
+                content: text,
             };
             
-            // Если есть изображение
+            // If image provided
             if (imagePath) {
-                // Сначала загружаем файл через /api/files/upload
+                // Upload file via /api/files/upload
                 const uploadedFile = await this.client.files.uploadFile(imagePath);
                 if (!uploadedFile) {
-                    console.error('Ошибка: не удалось загрузить изображение');
+                    console.error('Error: failed to upload image');
                     return null;
                 }
                 
-                // Затем создаем пост с ID загруженного файла
-                // Используем attachmentIds (не attachments!) - это правильное поле из API
+                // Create post with uploaded file ID (API uses attachmentIds)
                 postData.attachmentIds = [uploadedFile.id];
             }
             
-            // Создаем пост (с изображением или без); увеличенный таймаут для тяжёлых запросов
+            // Create post (with or without image); extended timeout
             const response = await this.axios.post(postUrl, postData, {
                 timeout: this.client.uploadTimeout ?? 120000,
             });
@@ -61,11 +60,11 @@ export class PostsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             } else {
-                console.error(`Ошибка создания поста: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Create post error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при создании поста:', error.message);
+            console.error('Exception creating post:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -75,54 +74,52 @@ export class PostsManager {
     }
     
     /**
-     * Создает пост на стене другого пользователя (wall post).
-     * При любой ошибке возвращает null. Таймаут — client.uploadTimeout (по умолчанию 120 с).
+     * Creates post on another user's wall (wall post).
+     * Returns null on any error. Timeout — client.uploadTimeout (default 120 s).
      *
-     * @param {string} username - Имя пользователя, на чью стену нужно написать
-     * @param {string} text - Текст поста
-     * @param {string|null} imagePath - Путь к изображению (опционально)
-     * @returns {Promise<Object|null>} Данные созданного поста или null при ошибке
+     * @param {string} username - Username whose wall to post on
+     * @param {string} text - Post text
+     * @param {string|null} imagePath - Path to image (optional)
+     * @returns {Promise<Object|null>} Created post data or null on error
      */
     async createWallPost(username, text, imagePath = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
         try {
-            // Получаем профиль пользователя, чтобы получить его ID
+            // Get user profile for ID
             const profile = await this.client.users.getUserProfile(username);
             if (!profile || !profile.id) {
-                console.error(`Ошибка: не удалось получить профиль пользователя ${username}`);
+                console.error(`Error: failed to get user profile ${username}`);
                 return null;
             }
             
             const wallRecipientId = profile.id;
             
-            // Реальный URL из анализа
+            // API URL
             const postUrl = `${this.client.baseUrl}/api/posts`;
             
-            // Подготовка данных с wallRecipientId
             let postData = {
                 content: text,
-                wallRecipientId: wallRecipientId,  // ID получателя поста на стене
+                wallRecipientId: wallRecipientId,
             };
             
-            // Если есть изображение
+            // If image provided
             if (imagePath) {
-                // Сначала загружаем файл через /api/files/upload
+                // Upload file via /api/files/upload
                 const uploadedFile = await this.client.files.uploadFile(imagePath);
                 if (!uploadedFile) {
-                    console.error('Ошибка: не удалось загрузить изображение');
+                    console.error('Error: failed to upload image');
                     return null;
                 }
                 
-                // Затем создаем пост с ID загруженного файла
-                // Используем attachmentIds (не attachments!) - это правильное поле из API
+                // Create post with uploaded file ID (API uses attachmentIds)
                 postData.attachmentIds = [uploadedFile.id];
             }
             
-            // Создаем пост на стене; увеличенный таймаут для тяжёлых запросов
+            // Create wall post; extended timeout
             const response = await this.axios.post(postUrl, postData, {
                 timeout: this.client.uploadTimeout ?? 120000,
             });
@@ -130,11 +127,11 @@ export class PostsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             } else {
-                console.error(`Ошибка создания поста на стене: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Create wall post error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при создании поста на стене:', error.message);
+            console.error('Exception creating wall post:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -144,24 +141,21 @@ export class PostsManager {
     }
     
     /**
-     * Получает список постов пользователя или ленту
-     * 
-     * @param {string|null} username - Имя пользователя (null = лента/свои посты)
-     * @param {number} limit - Количество постов
-     * @param {string} sort - Сортировка: "new" (новые), "old" (старые), "popular" (популярные), "trending" (трендовые, аналог popular), "recent" (недавние, аналог new)
-     * @param {string|null} cursor - Курсор для пагинации (из pagination.nextCursor)
-     * @param {string|null} tab - Тип ленты: "popular" (популярные), "following" (из подписок), null (обычная лента)
-     * @param {string|null} type - Альтернативный способ указать тип: "trending" (аналог tab=popular)
-     * @param {string|null} filter - Альтернативный способ указать фильтр: "trending" (аналог tab=popular)
-     * @returns {Promise<Object>} Объект с постами и пагинацией: { posts: [], pagination: {} }
-     * 
-     * @note Параметры type и filter являются альтернативными способами получить те же данные,
-     *       что и tab/sort. Они добавлены для совместимости с различными вариантами API.
+     * Gets user posts or feed
+     *
+     * @param {string|null} username - Username (null = feed/own posts)
+     * @param {number} limit - Number of posts
+     * @param {string} sort - Sort: "new", "old", "popular", "trending", "recent"
+     * @param {string|null} cursor - Pagination cursor (from pagination.nextCursor)
+     * @param {string|null} tab - Feed type: "popular", "following", null
+     * @param {string|null} type - Alternative: "trending" (same as tab=popular)
+     * @param {string|null} filter - Alternative: "trending" (same as tab=popular)
+     * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getPosts(username = null, limit = 20, sort = 'new', cursor = null, tab = null, type = null, filter = null) {
-        // Если username не указан и tab указан, запрашиваем ленту - требуется авторизация
+        // Feed requires auth when username not set and tab/type/filter set
         if (!username && (tab || type || filter) && !await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт для получения ленты');
+            console.error('Error: must be logged in to get feed');
             return { posts: [], pagination: {} };
         }
         
@@ -172,22 +166,21 @@ export class PostsManager {
             };
             
             if (username) {
-                // Посты конкретного пользователя (публичные, auth не требуется)
+                // User posts (public, auth not required)
                 postsUrl = `${this.client.baseUrl}/api/posts/user/${username}`;
                 params.sort = sort;
             } else {
-                // Лента (популярные, из подписок, или обычная)
+                // Feed (popular, following, or default)
                 postsUrl = `${this.client.baseUrl}/api/posts`;
                 
-                // Приоритет: tab > type > filter > sort
                 if (tab) {
-                    params.tab = tab; // "popular" или "following"
+                    params.tab = tab;
                 } else if (type) {
-                    params.type = type; // "trending" (аналог tab=popular)
+                    params.type = type;
                 } else if (filter) {
-                    params.filter = filter; // "trending" (аналог tab=popular)
+                    params.filter = filter;
                 } else {
-                    params.sort = sort; // "new", "old", "popular", "trending", "recent"
+                    params.sort = sort;
                 }
             }
             
@@ -200,7 +193,7 @@ export class PostsManager {
             if (response.status === 200) {
                 const data = response.data;
                 
-                // Реальная структура: { data: { posts: [...], pagination: {...} } }
+                // Response: { data: { posts: [...], pagination: {...} } }
                 if (data.data && data.data.posts) {
                     return {
                         posts: data.data.posts,
@@ -208,7 +201,7 @@ export class PostsManager {
                     };
                 }
                 
-                // Fallback для других возможных структур
+                // Fallback for other response shapes
                 if (Array.isArray(data)) {
                     return { posts: data, pagination: {} };
                 } else if (data.posts && Array.isArray(data.posts)) {
@@ -217,11 +210,11 @@ export class PostsManager {
                 
                 return { posts: [], pagination: {} };
             } else {
-                console.error(`Ошибка получения постов: ${response.status}`);
+                console.error(`Get posts error: ${response.status}`);
                 return { posts: [], pagination: {} };
             }
         } catch (error) {
-            console.error('Исключение при получении постов:', error.message);
+            console.error('Exception getting posts:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -231,12 +224,12 @@ export class PostsManager {
     }
     
     /**
-     * Получает лайкнутые посты пользователя.
+     * Gets user's liked posts.
      * GET /api/posts/user/{username}/liked → { data: { posts: [], pagination: {} } }
      *
-     * @param {string} username - Имя пользователя
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации (pagination.nextCursor)
+     * @param {string} username - Username
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor (pagination.nextCursor)
      * @returns {Promise<Object>} { posts: [], pagination: { limit, nextCursor, hasMore } }
      */
     async getLikedPosts(username, limit = 20, cursor = null) {
@@ -257,32 +250,32 @@ export class PostsManager {
             }
             return { posts: [], pagination: {} };
         } catch (error) {
-            console.error('Ошибка получения лайкнутых постов:', error.message);
+            console.error('Get liked posts error:', error.message);
             return { posts: [], pagination: {} };
         }
     }
 
     /**
-     * Получает популярные посты (лента популярного)
-     * 
-     * @param {number} limit - Количество постов
-     * @param {string|null} cursor - Курсор для пагинации
-     * @returns {Promise<Object>} Объект с постами и пагинацией: { posts: [], pagination: {} }
+     * Gets popular posts (popular feed)
+     *
+     * @param {number} limit - Number of posts
+     * @param {string|null} cursor - Pagination cursor
+     * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getFeedPopular(limit = 20, cursor = null) {
         return await this.getPosts(null, limit, 'new', cursor, 'popular');
     }
     
     /**
-     * Получает посты из подписок (лента подписок)
-     * 
-     * @param {number} limit - Количество постов
-     * @param {string|null} cursor - Курсор для пагинации
-     * @returns {Promise<Object>} Объект с постами и пагинацией: { posts: [], pagination: {} }
+     * Gets following feed posts
+     *
+     * @param {number} limit - Number of posts
+     * @param {string|null} cursor - Pagination cursor
+     * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getFeedFollowing(limit = 20, cursor = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт для получения ленты подписок');
+            console.error('Error: must be logged in to get following feed');
             return { posts: [], pagination: {} };
         }
         return await this.getPosts(null, limit, 'new', cursor, 'following');
@@ -290,10 +283,10 @@ export class PostsManager {
     
     
     /**
-     * Отмечает пост как просмотренный. POST /api/posts/{id}/view
+     * Marks post as viewed. POST /api/posts/{id}/view
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async viewPost(postId) {
         if (!await this.client.auth.checkAuth()) return false;
@@ -302,17 +295,17 @@ export class PostsManager {
             const response = await this.axios.post(url);
             return response.status === 200 || response.status === 201 || response.status === 204;
         } catch (error) {
-            console.error('Исключение при отметке просмотра:', error.message);
+            console.error('Exception marking view:', error.message);
             return false;
         }
     }
 
     /**
-     * Получает посты на стене пользователя. GET /api/posts/user/{username}/wall
+     * Gets posts on user's wall. GET /api/posts/user/{username}/wall
      *
-     * @param {string} username - Имя пользователя
-     * @param {number} limit - Количество
-     * @param {string|null} cursor - Курсор пагинации
+     * @param {string} username - Username
+     * @param {number} limit - Count
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getWallByUser(username, limit = 20, cursor = null) {
@@ -330,36 +323,35 @@ export class PostsManager {
             }
             return { posts: [], pagination: {} };
         } catch (error) {
-            console.error('Ошибка получения постов со стены:', error.message);
+            console.error('Get wall posts error:', error.message);
             return { posts: [], pagination: {} };
         }
     }
 
     /**
-     * Получает конкретный пост по ID
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} Данные поста или null
-     * 
-     * Примечание: Авторизация не требуется для просмотра публичных постов
+     * Gets single post by ID
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} Post data or null
+     *
+     * Note: Auth not required for public posts
      */
     async getPost(postId) {
         try {
-            // Реальный URL из анализа
+            // API URL
             const postUrl = `${this.client.baseUrl}/api/posts/${postId}`;
             const response = await this.axios.get(postUrl);
             
             if (response.status === 200) {
-                // Структура ответа: { data: { id, content, comments: [...], ... } }
+                // Response: { data: { id, content, comments: [...], ... } }
                 const post = response.data.data || response.data;
-                // Комментарии могут быть вложены в пост
                 return post;
             } else {
-                console.error(`Ошибка получения поста: ${response.status}`);
+                console.error(`Get post error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении поста:', error.message);
+            console.error('Exception getting post:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -369,24 +361,24 @@ export class PostsManager {
     }
     
     /**
-     * Редактирует существующий пост
-     * 
-     * @param {string} postId - ID поста
-     * @param {string} newContent - Новый текст поста
-     * @returns {Promise<Object|null>} Обновленные данные поста или null
+     * Edits existing post
+     *
+     * @param {string} postId - Post ID
+     * @param {string} newContent - New post text
+     * @returns {Promise<Object|null>} Updated post data or null
      */
     async editPost(postId, newContent) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
         try {
-            // Реальный URL из анализа: PUT /api/posts/{id}
+            // API URL: PUT /api/posts/{id}
             const editUrl = `${this.client.baseUrl}/api/posts/${postId}`;
             
             const postData = {
-                content: newContent,  // Реальное поле называется "content"
+                content: newContent,
             };
             
             const response = await this.axios.put(editUrl, postData);
@@ -394,11 +386,11 @@ export class PostsManager {
             if (response.status === 200) {
                 return response.data?.data ?? response.data;
             } else {
-                console.error(`Ошибка редактирования поста: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Edit post error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при редактировании поста:', error.message);
+            console.error('Exception editing post:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -408,19 +400,19 @@ export class PostsManager {
     }
     
     /**
-     * Удаляет пост
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * Deletes post
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async deletePost(postId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
         
         try {
-            // Реальный URL из анализа
+            // API URL
             const deleteUrl = `${this.client.baseUrl}/api/posts/${postId}`;
             const response = await this.axios.delete(deleteUrl);
             
@@ -429,21 +421,21 @@ export class PostsManager {
             }
             return false;
         } catch (error) {
-            console.error('Исключение при удалении поста:', error.message);
+            console.error('Exception deleting post:', error.message);
             return false;
         }
     }
 
     /**
-     * Восстанавливает удалённый пост.
-     * POST /api/posts/{id}/restore — пустой ответ при успехе
+     * Restores deleted post.
+     * POST /api/posts/{id}/restore — empty response on success
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async restorePost(postId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
         try {
@@ -451,21 +443,21 @@ export class PostsManager {
             const response = await this.axios.post(url);
             return response.status === 200 || response.status === 201 || response.status === 204;
         } catch (error) {
-            console.error('Исключение при восстановлении поста:', error.message);
+            console.error('Exception restoring post:', error.message);
             return false;
         }
     }
     
     /**
-     * Закрепляет пост.
+     * Pins post.
      * POST /api/posts/{id}/pin → { success: true, pinnedPostId }
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async pinPost(postId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
         try {
@@ -476,21 +468,21 @@ export class PostsManager {
             }
             return false;
         } catch (error) {
-            console.error('Исключение при закреплении поста:', error.message);
+            console.error('Exception pinning post:', error.message);
             return false;
         }
     }
 
     /**
-     * Открепляет пост.
+     * Unpins post.
      * DELETE /api/posts/{id}/pin → { success: true, pinnedPostId: null }
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async unpinPost(postId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
         try {
@@ -501,21 +493,21 @@ export class PostsManager {
             }
             return false;
         } catch (error) {
-            console.error('Исключение при откреплении поста:', error.message);
+            console.error('Exception unpinning post:', error.message);
             return false;
         }
     }
     
     /**
-     * Делает репост
-     * 
-     * @param {string} postId - ID поста для репоста
-     * @param {string|null} comment - Комментарий к репосту (опционально)
-     * @returns {Promise<Object|null>} Данные созданного репоста или null при ошибке
+     * Reposts a post
+     *
+     * @param {string} postId - Post ID to repost
+     * @param {string|null} comment - Repost comment (optional)
+     * @returns {Promise<Object|null>} Created repost data or null on error
      */
     async repost(postId, comment = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
@@ -532,14 +524,14 @@ export class PostsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data?.data ?? response.data;
             } else {
-                console.error(`Ошибка репоста: ${response.status}`);
+                console.error(`Repost error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при репосте:', error.message);
+            console.error('Exception reposting:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -548,13 +540,13 @@ export class PostsManager {
         }
     }
     
-    // ========== USER-FRIENDLY МЕТОДЫ ==========
-    
+// ========== USER-FRIENDLY METHODS ==========
+
     /**
-     * Получает трендовые посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets trending posts
+     *
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getTrendingPosts(limit = 20, cursor = null) {
@@ -562,10 +554,10 @@ export class PostsManager {
     }
     
     /**
-     * Получает недавние посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets recent posts
+     *
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getRecentPosts(limit = 20, cursor = null) {
@@ -573,32 +565,32 @@ export class PostsManager {
     }
     
     /**
-     * Получает свои посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string} sort - Сортировка: 'new', 'old', 'popular' (по умолчанию 'new')
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets own posts
+     *
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string} sort - Sort: 'new', 'old', 'popular' (default 'new')
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getMyPosts(limit = 20, sort = 'new', cursor = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт для получения своих постов');
+            console.error('Error: must be logged in to get own posts');
             return { posts: [], pagination: {} };
         }
-        // Получаем свой username из профиля
+        // Get own username from profile
         const profile = await this.client.users.getMyProfile();
         if (!profile || !profile.username) {
-            console.error('Ошибка: не удалось получить свой username');
+            console.error('Error: failed to get own username');
             return { posts: [], pagination: {} };
         }
         return await this.getPosts(profile.username, limit, sort, cursor);
     }
     
     /**
-     * Получает последний пост пользователя (удобный метод)
-     * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} Последний пост или null
+     * Gets user's latest post
+     *
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} Latest post or null
      */
     async getUserLatestPost(username) {
         const result = await this.getPosts(username, 1, 'new');
@@ -609,10 +601,10 @@ export class PostsManager {
     }
     
     /**
-     * Получает количество лайков поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество лайков
+     * Gets post likes count
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Likes count
      */
     async getPostLikesCount(postId) {
         const post = await this.getPost(postId);
@@ -620,10 +612,10 @@ export class PostsManager {
     }
     
     /**
-     * Получает количество просмотров поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество просмотров
+     * Gets post views count
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Views count
      */
     async getPostViewsCount(postId) {
         const post = await this.getPost(postId);
@@ -631,10 +623,10 @@ export class PostsManager {
     }
     
     /**
-     * Получает количество комментариев поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество комментариев
+     * Gets post comments count
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Comments count
      */
     async getPostCommentsCount(postId) {
         const post = await this.getPost(postId);
@@ -642,10 +634,10 @@ export class PostsManager {
     }
     
     /**
-     * Получает статистику поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} { likes: number, views: number, comments: number, reposts: number } или null
+     * Gets post statistics
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} { likes, views, comments, reposts } or null
      */
     async getPostStats(postId) {
         const post = await this.getPost(postId);

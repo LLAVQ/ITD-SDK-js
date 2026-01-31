@@ -1,8 +1,8 @@
 /**
- * 🔄 Пример 3: Автоматическое обновление токена
- * 
- * Демонстрирует, как SDK автоматически обновляет токен при истечении.
- * Вы просто используете API - всё работает "из коробки"!
+ * 🔄 Example 3: Automatic token refresh
+ *
+ * Shows how the SDK automatically refreshes the token when it expires.
+ * You just use the API — everything works out of the box!
  */
 
 import { ITDClient } from 'itd-sdk-js';
@@ -11,49 +11,48 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function main() {
-    console.log('🔄 === Автоматическое обновление токена ===\n');
+    console.log('🔄 === Automatic token refresh ===\n');
 
     const client = new ITDClient();
-    // Токен подхватывается из .env автоматически
+    // Token is read from .env automatically
 
-    console.log('💡 SDK автоматически обновит токен при истечении!');
-    console.log('   Вы просто используете API - всё работает "из коробки"\n');
+    console.log('💡 SDK will refresh the token automatically when it expires!');
+    console.log('   You just use the API — everything works out of the box\n');
 
     try {
-        // Делаем несколько запросов
-        // Если токен истёк, SDK автоматически:
-        // 1. Обнаружит ошибку 401
-        // 2. Обновит токен через refresh endpoint
-        // 3. Повторит запрос
-        // Всё это происходит автоматически!
+        // Make several requests
+        // If the token expires, the SDK automatically:
+        // 1. Detects 401
+        // 2. Refreshes token via refresh endpoint
+        // 3. Retries the request
+        // All of this happens automatically!
 
-        console.log('📝 Запрос 1: Получаю свой профиль...');
+        console.log('📝 Request 1: Getting my profile...');
         const profile = await client.getMyProfile();
-        console.log(`   ✅ Успешно! Username: ${profile.username}\n`);
+        console.log(`   ✅ Success! Username: ${profile.username}\n`);
 
-        console.log('📝 Запрос 2: Получаю свои посты...');
+        console.log('📝 Request 2: Getting my posts...');
         const posts = await client.getMyPosts(5);
-        console.log(`   ✅ Успешно! Найдено постов: ${posts.posts.length}\n`);
+        console.log(`   ✅ Success! Posts: ${posts.posts.length}\n`);
 
-        console.log('📝 Запрос 3: Получаю уведомления...');
+        console.log('📝 Request 3: Getting notifications...');
         const notifications = await client.getNotifications(5);
         if (notifications) {
-            console.log(`   ✅ Успешно! Найдено уведомлений: ${notifications.notifications.length}\n`);
+            console.log(`   ✅ Success! Notifications: ${notifications.notifications.length}\n`);
         }
 
-        console.log('🎉 Все запросы выполнены успешно!');
-        console.log('   Токен обновлялся автоматически при необходимости.\n');
+        console.log('🎉 All requests completed successfully!');
+        console.log('   Token was refreshed automatically when needed.\n');
 
-        // Проверяем текущий токен
-        console.log('🔍 Текущий токен:');
+        console.log('🔍 Current token:');
         console.log(`   ${client.accessToken?.substring(0, 50)}...`);
 
     } catch (error) {
-        console.error('❌ Ошибка:', error.message);
-        console.error('\n💡 Убедитесь, что:');
-        console.error('   1. В .env указан ITD_ACCESS_TOKEN');
-        console.error('   2. В .cookies есть refresh_token cookie');
-        console.error('   3. Cookies не истекли');
+        console.error('❌ Error:', error.message);
+        console.error('\n💡 Make sure:');
+        console.error('   1. ITD_ACCESS_TOKEN is set in .env');
+        console.error('   2. .cookies has refresh_token cookie');
+        console.error('   3. Cookies have not expired');
     }
 }
 

@@ -1,5 +1,5 @@
 /**
- * Главный клиент для работы с неофициальным API итд.com
+ * Main client for unofficial итд.com API
  */
 import axios from 'axios';
 import dotenv from 'dotenv';
@@ -22,20 +22,20 @@ dotenv.config();
 
 export class ITDClient {
     /**
-     * Инициализация клиента
-     * 
-     * @param {string|Object} baseUrlOrOptions - Базовый URL сайта или объект опций
-     * @param {string} [userAgent] - User-Agent (если первый аргумент — baseUrl)
-     * 
-     * Опции (если первый аргумент — объект):
-     * @param {string} [options.baseUrl] - Базовый URL сайта
+     * Client initialization
+     *
+     * @param {string|Object} baseUrlOrOptions - Base URL or options object
+     * @param {string} [userAgent] - User-Agent (if first arg is baseUrl)
+     *
+     * Options (if first arg is object):
+     * @param {string} [options.baseUrl] - Base URL
      * @param {string} [options.userAgent] - User-Agent
-     * @param {string} [options.projectRoot] - Корень проекта (по умолчанию process.cwd()); .env и .cookies ищутся здесь
-     * @param {string} [options.envPath] - Полный путь к .env (переопределяет projectRoot для .env)
-     * @param {string} [options.cookiesPath] - Полный путь к .cookies (переопределяет projectRoot для .cookies)
-     * @param {number} [options.requestTimeout] - Таймаут обычных запросов в мс (по умолчанию 60000)
-     * @param {number} [options.uploadTimeout] - Таймаут загрузки файлов и создания поста в мс (по умолчанию 120000)
-     * @param {string} [options.accessToken] - JWT токен (если не указан — берётся из .env ITD_ACCESS_TOKEN)
+     * @param {string} [options.projectRoot] - Project root (default process.cwd()); .env and .cookies are looked up here
+     * @param {string} [options.envPath] - Full path to .env (overrides projectRoot for .env)
+     * @param {string} [options.cookiesPath] - Full path to .cookies (overrides projectRoot for .cookies)
+     * @param {number} [options.requestTimeout] - Request timeout in ms (default 60000)
+     * @param {number} [options.uploadTimeout] - File upload and post creation timeout in ms (default 120000)
+     * @param {string} [options.accessToken] - JWT token (if not set — from .env ITD_ACCESS_TOKEN)
      */
     constructor(baseUrlOrOptions = null, userAgent = null) {
         let baseUrl, projectRoot, envPath, cookiesPath, requestTimeout, uploadTimeout, accessToken;
@@ -60,37 +60,33 @@ export class ITDClient {
             accessToken = process.env.ITD_ACCESS_TOKEN ?? null;
         }
 
-        // Используем реальный домен (IDN: итд.com = xn--d1ah4a.com)
+        // Real domain (IDN: итд.com = xn--d1ah4a.com)
         this.baseUrl = baseUrl;
         this.userAgent = userAgent || process.env.ITD_USER_AGENT ||
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-        /** Пути к .env и .cookies (корень проекта по умолчанию) */
+        /** Paths to .env and .cookies (default project root) */
         this.envPath = envPath;
         this.cookiesPath = cookiesPath;
 
-        /** Таймаут обычных запросов (мс). Для загрузки и создания поста используется uploadTimeout. */
+        /** Normal request timeout (ms). uploadTimeout is used for upload and post creation. */
         this.requestTimeout = requestTimeout;
-        /** Таймаут загрузки файлов и создания поста (мс), чтобы не зависать при 504/медленной сети. */
+        /** File upload and post creation timeout (ms), to avoid hanging on 504/slow network. */
         this.uploadTimeout = uploadTimeout;
 
         /** @type {string|null} */
         this.accessToken = accessToken || null;
 
-        // Прокси (важно, если браузер ходит через 127.0.0.1:10808)
-        // Можно задать: ITD_PROXY=http://127.0.0.1:10808
-        // Или стандартные: HTTPS_PROXY / HTTP_PROXY
+        // Proxy (e.g. ITD_PROXY=http://127.0.0.1:10808 or HTTPS_PROXY/HTTP_PROXY)
         this.proxyUrl = process.env.ITD_PROXY || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || null;
         
-        // В Node.js axios НЕ хранит cookies сам по себе.
-        // Поэтому используем CookieJar, чтобы сессия сохранялась как в браузере.
+        // axios does not store cookies by default; use CookieJar for session.
         this.cookieJar = new CookieJar();
 
-        // Cookies загружаются из отдельного файла .cookies (чтобы избежать проблем с ; в .env)
-        // ВАЖНО: это чувствительные данные — не коммитьте .cookies
+        // Cookies loaded from .cookies file (sensitive — do not commit)
         this._loadCookiesFromFile();
 
-        // Создание axios instance + cookie jar
+        // Create axios instance with cookie jar
         const axiosConfig = {
             baseURL: this.baseUrl,
             timeout: requestTimeout,
@@ -101,18 +97,14 @@ export class ITDClient {
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Content-Type': 'application/json',
-                // Возможно понадобятся дополнительные заголовки:
+                // Optional extra headers:
                 // 'Referer': this.baseUrl,
                 // 'Origin': this.baseUrl,
             }
         };
 
         if (this.proxyUrl) {
-            // axios-cookiejar-support не работает с кастомными http(s).Agent,
-            // поэтому используем встроенную поддержку proxy у axios.
-            //
-            // Формат: ITD_PROXY=http://127.0.0.1:10808
-            // ВАЖНО: это должен быть HTTP CONNECT proxy, не SOCKS.
+            // Use axios built-in proxy (HTTP CONNECT, not SOCKS).
             const parsed = new URL(this.proxyUrl);
             axiosConfig.proxy = {
                 protocol: parsed.protocol.replace(':', ''),
@@ -123,11 +115,11 @@ export class ITDClient {
 
         this.axios = wrapper(axios.create(axiosConfig));
 
-        // Анти-дребезг для refresh (чтобы 10 параллельных 401 не делали 10 refresh)
+        // Debounce refresh (avoid 10 parallel 401s triggering 10 refreshes)
         /** @type {Promise<string|null> | null} */
         this._refreshPromise = null;
 
-        // Автоматически подставляем Authorization, если есть accessToken
+        // Auto-add Authorization when accessToken is set
         this.axios.interceptors.request.use((config) => {
             if (this.accessToken && !config.headers?.Authorization) {
                 config.headers = config.headers || {};
@@ -136,30 +128,27 @@ export class ITDClient {
             return config;
         });
 
-        // Авто-рефреш токена на 401 + повтор запроса
+        // Auto-refresh token on 401 and retry request
         this.axios.interceptors.response.use(
             (response) => response,
             async (error) => {
                 const status = error?.response?.status;
                 const originalRequest = error?.config;
 
-                // Если нет конфига запроса — просто пробрасываем ошибку
                 if (!originalRequest) {
-                    throw error;
-                }
+                if (!originalRequest) throw error;
 
-                // Не пытаемся рефрешить при ошибках не-401
-                // 429 (Rate Limit) тоже не рефрешим - это другая проблема
+                // Only refresh on 401, not on 429 etc.
                 if (status !== 401) {
                     throw error;
                 }
 
-                // Не зацикливаемся
+                // Avoid retry loop
                 if (originalRequest.__itdRetried) {
                     throw error;
                 }
 
-                // Не пытаемся рефрешить, если это сам refresh
+                // Don't refresh when the request is refresh itself
                 const url = String(originalRequest.url || '');
                 if (url.includes('/api/v1/auth/refresh')) {
                     throw error;
@@ -167,7 +156,7 @@ export class ITDClient {
 
                 originalRequest.__itdRetried = true;
 
-                // Пытаемся обновить токен (требует refresh_token cookie в cookie jar)
+                // Try to refresh token (requires refresh_token in cookie jar)
                 if (!this._refreshPromise) {
                     this._refreshPromise = this.refreshAccessToken().finally(() => {
                         this._refreshPromise = null;
@@ -177,21 +166,20 @@ export class ITDClient {
                 const newToken = await this._refreshPromise;
 
                 if (!newToken) {
-                    // Не смогли обновить — пробрасываем исходную 401
+                    // Refresh failed — rethrow 401
                     throw error;
                 }
 
-                // Повторяем исходный запрос с новым токеном
+                // Retry original request with new token
                 originalRequest.headers = originalRequest.headers || {};
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                // Убираем флаг retry для следующей попытки
                 delete originalRequest.__itdRetried;
                 const retryResponse = await this.axios.request(originalRequest);
                 return retryResponse;
             }
         );
         
-        // Инициализация менеджеров
+        // Initialize managers
         this.auth = new AuthManager(this);
         this.posts = new PostsManager(this);
         this.comments = new CommentsManager(this);
@@ -205,7 +193,7 @@ export class ITDClient {
     }
 
     /**
-     * Установить accessToken (JWT) для Authorization header
+     * Set accessToken (JWT) for Authorization header
      * @param {string|null} token
      */
     setAccessToken(token) {
@@ -213,9 +201,9 @@ export class ITDClient {
     }
 
     /**
-     * Убедиться, что есть accessToken. Если нет, но есть refresh_token в cookies — вызывает refresh.
-     * Для сценария «только .cookies»: await client.ensureAuthenticated() перед первым запросом.
-     * @returns {Promise<boolean>} true если токен есть или получен, false если нет
+     * Ensure accessToken exists. If not but refresh_token in cookies — calls refresh.
+     * For ".cookies only": await client.ensureAuthenticated() before first request.
+     * @returns {Promise<boolean>} true if token exists or was obtained, false otherwise
      */
     async ensureAuthenticated() {
         if (this.accessToken) return true;
@@ -225,61 +213,61 @@ export class ITDClient {
     }
 
     /**
-     * Кастомный GET запрос (baseURL уже подставлен)
-     * @param {string} path - Путь, например /api/users/me
-     * @param {Object} [config] - Доп. опции axios
+     * Custom GET request (baseURL already set)
+     * @param {string} path - Path e.g. /api/users/me
+     * @param {Object} [config] - Axios config
      */
     get(path, config = {}) {
         return this.axios.get(path, config);
     }
 
     /**
-     * Кастомный POST запрос
-     * @param {string} path - Путь, например /api/posts
-     * @param {Object} [data] - Тело запроса (JSON)
-     * @param {Object} [config] - Доп. опции axios
+     * Custom POST request
+     * @param {string} path - Path e.g. /api/posts
+     * @param {Object} [data] - Request body (JSON)
+     * @param {Object} [config] - Axios config
      */
     post(path, data = {}, config = {}) {
         return this.axios.post(path, data, config);
     }
 
     /**
-     * Кастомный PUT запрос
-     * @param {string} path - Путь
-     * @param {Object} [data] - Тело запроса
-     * @param {Object} [config] - Доп. опции axios
+     * Custom PUT request
+     * @param {string} path - Path
+     * @param {Object} [data] - Request body
+     * @param {Object} [config] - Axios config
      */
     put(path, data = {}, config = {}) {
         return this.axios.put(path, data, config);
     }
 
     /**
-     * Кастомный PATCH запрос
-     * @param {string} path - Путь
-     * @param {Object} [data] - Тело запроса
-     * @param {Object} [config] - Доп. опции axios
+     * Custom PATCH request
+     * @param {string} path - Path
+     * @param {Object} [data] - Request body
+     * @param {Object} [config] - Axios config
      */
     patch(path, data = {}, config = {}) {
         return this.axios.patch(path, data, config);
     }
 
     /**
-     * Кастомный DELETE запрос
-     * @param {string} path - Путь
-     * @param {Object} [config] - Доп. опции axios
+     * Custom DELETE request
+     * @param {string} path - Path
+     * @param {Object} [config] - Axios config
      */
     delete(path, config = {}) {
         return this.axios.delete(path, config);
     }
     
     /**
-     * Загружает cookies из файла .cookies
+     * Loads cookies from .cookies file
      * @private
      */
     _loadCookiesFromFile() {
         try {
             if (!fs.existsSync(this.cookiesPath)) {
-                // Файл не существует - это нормально, просто пропускаем
+                // File missing — skip
                 return;
             }
             
@@ -288,117 +276,113 @@ export class ITDClient {
                 return;
             }
             
-            // Парсим cookies
+            // Parse cookies
             const parts = cookieHeader.split(';').map((p) => p.trim()).filter(Boolean);
             const domain = new URL(this.baseUrl).hostname;
             
             for (const part of parts) {
-                // part вида "name=value"
+                // part is "name=value"
                 const [name, ...valueParts] = part.split('=');
                 if (name && valueParts.length > 0) {
-                    const value = valueParts.join('='); // На случай если в value есть = 
-                    // Создаем cookie с правильным форматом для tough-cookie
+                    const value = valueParts.join('='); 
+                    // Set cookie for tough-cookie
                     const cookieString = `${name}=${value}; Domain=${domain}; Path=/`;
                     this.cookieJar.setCookieSync(cookieString, this.baseUrl);
                 }
             }
         } catch (e) {
-            // Не валим процесс — просто предупреждаем в консоль
-            console.warn('⚠️  Не удалось загрузить cookies из .cookies:', e?.message || e);
+            console.warn('⚠️  Failed to load cookies from .cookies:', e?.message || e);
         }
     }
     
 
     /**
-     * Обновить accessToken через refresh endpoint.
-     * Обычно работает, если в cookie jar уже есть refresh-cookie от сайта.
-     * @returns {Promise<string|null>} accessToken или null
+     * Refresh accessToken via refresh endpoint.
+     * Works when cookie jar has refresh-cookie from site.
+     * @returns {Promise<string|null>} accessToken or null
      */
     async refreshAccessToken() {
         return await this.auth.refreshAccessToken();
     }
     
     /**
-     * Проверяет наличие refresh_token в cookies
-     * 
-     * @returns {boolean} True если refresh_token доступен для обновления токена
+     * Checks for refresh_token in cookies
+     *
+     * @returns {boolean} True if refresh_token is available for token refresh
      */
     hasRefreshToken() {
         return this.auth.hasRefreshToken();
     }
     
     /**
-     * Проверяет валидность токена и обновляет его при необходимости
-     * Полезно вызывать перед множественными запросами с большими интервалами
-     * 
-     * @returns {Promise<boolean>} True если токен валиден или успешно обновлен
+     * Validates token and refreshes if needed.
+     * Call before multiple requests with long gaps.
+     *
+     * @returns {Promise<boolean>} True if token valid or successfully refreshed
      */
     async validateAndRefreshToken() {
         return await this.auth.validateAndRefreshToken();
     }
     
     /**
-     * Выход из аккаунта
-     * 
-     * @returns {Promise<boolean>} True если успешно
+     * Logout
+     *
+     * @returns {Promise<boolean>} True on success
      */
     async logout() {
         return await this.auth.logout();
     }
 
     /**
-     * Смена пароля. POST /api/v1/auth/change-password. Требует cookies (refresh_token).
+     * Change password. POST /api/v1/auth/change-password. Requires cookies (refresh_token).
      *
-     * @param {string} oldPassword - Текущий пароль
-     * @param {string} newPassword - Новый пароль
-     * @returns {Promise<Object|null>} Ответ API или null
+     * @param {string} oldPassword - Current password
+     * @param {string} newPassword - New password
+     * @returns {Promise<Object|null>} API response or null
      */
     async changePassword(oldPassword, newPassword) {
         return await this.auth.changePassword(oldPassword, newPassword);
     }
     
     /**
-     * Создает пост (удобный метод)
-     * 
-     * @param {string} text - Текст поста
-     * @param {string|null} imagePath - Путь к изображению (опционально)
-     * @returns {Promise<Object|null>} Данные поста или null
+     * Creates post     * 
+     * @param {string} text - Post text
+     * @param {string|null} imagePath - Path to image (optional)
+     * @returns {Promise<Object|null>} Post data or null
      */
     async createPost(text, imagePath = null) {
         return await this.posts.createPost(text, imagePath);
     }
     
     /**
-     * Создает пост на стене другого пользователя (wall post)
+     * Creates post on another user's wall (wall post)
      * 
-     * @param {string} username - Имя пользователя, на чью стену нужно написать
-     * @param {string} text - Текст поста
-     * @param {string|null} imagePath - Путь к изображению (опционально)
-     * @returns {Promise<Object|null>} Данные созданного поста или null
+     * @param {string} username - Username     * @param {string} text - Post text
+     * @param {string|null} imagePath - Path to image (optional)
+     * @returns {Promise<Object|null>} Created post data or null
      */
     async createWallPost(username, text, imagePath = null) {
         return await this.posts.createWallPost(username, text, imagePath);
     }
     
     /**
-     * Редактирует пост (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @param {string} newContent - Новый текст поста
-     * @returns {Promise<Object|null>} Обновленные данные поста или null
+     * Edits post     * 
+     * @param {string} postId - Post ID
+     * @param {string} newContent - New post text
+     * @returns {Promise<Object|null>} Updated post data or null
      */
     async editPost(postId, newContent) {
         return await this.posts.editPost(postId, newContent);
     }
     
     /**
-     * Получает список постов пользователя или ленту
+     * Gets user posts or feed
      * 
-     * @param {string|null} username - Имя пользователя (null = лента/свои посты)
-     * @param {number} limit - Количество постов
-     * @param {string} sort - Сортировка: "newest", "oldest", "popular"
-     * @param {string|null} cursor - Курсор для пагинации
-     * @param {string|null} tab - Тип ленты: "popular" (популярные), "following" (из подписок), null (обычная лента)
+     * @param {string|null} username - Username (null = feed/own posts)
+     * @param {number} limit - Number of posts
+     * @param {string} sort - Sort: "newest", "oldest", "popular"
+     * @param {string|null} cursor - Pagination cursor
+     * @param {string|null} tab - Feed type: "popular", "following", null (default feed)
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getPosts(username = null, limit = 20, sort = 'new', cursor = null, tab = null) {
@@ -406,10 +390,10 @@ export class ITDClient {
     }
     
     /**
-     * Получает популярные посты (лента популярного)
+     * Gets popular posts (popular feed)
      * 
-     * @param {number} limit - Количество постов
-     * @param {string|null} cursor - Курсор для пагинации
+     * @param {number} limit - Number of posts
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getFeedPopular(limit = 20, cursor = null) {
@@ -417,10 +401,10 @@ export class ITDClient {
     }
     
     /**
-     * Получает посты из подписок (лента подписок)
+     * Gets following feed posts
      * 
-     * @param {number} limit - Количество постов
-     * @param {string|null} cursor - Курсор для пагинации
+     * @param {number} limit - Number of posts
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getFeedFollowing(limit = 20, cursor = null) {
@@ -428,12 +412,12 @@ export class ITDClient {
     }
 
     /**
-     * Получает лайкнутые посты пользователя.
+     * Gets user's liked posts.
      * GET /api/posts/user/{username}/liked → { posts: [], pagination: {} }
      *
-     * @param {string} username - Имя пользователя
-     * @param {number} limit - Количество постов
-     * @param {string|null} cursor - Курсор для пагинации
+     * @param {string} username - Username
+     * @param {number} limit - Number of posts
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getLikedPosts(username, limit = 20, cursor = null) {
@@ -441,11 +425,11 @@ export class ITDClient {
     }
     
     /**
-     * Получает список постов (простой вариант - только массив)
+     * Gets posts list (array only)
      * 
-     * @param {string|null} username - Имя пользователя
-     * @param {number} limit - Количество постов
-     * @returns {Promise<Array>} Список постов
+     * @param {string|null} username - Username
+     * @param {number} limit - Number of posts
+     * @returns {Promise<Array>} Posts array
      */
     async getPostsList(username = null, limit = 20) {
         const result = await this.posts.getPosts(username, limit, 'new', null);
@@ -453,31 +437,31 @@ export class ITDClient {
     }
     
     /**
-     * Получает конкретный пост по ID
+     * Gets single post by ID
      * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} Данные поста или null
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} Post data or null
      */
     async getPost(postId) {
         return await this.posts.getPost(postId);
     }
 
     /**
-     * Отмечает пост как просмотренный. POST /api/posts/{id}/view
+     * Marks post as viewed. POST /api/posts/{id}/view
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async viewPost(postId) {
         return await this.posts.viewPost(postId);
     }
 
     /**
-     * Получает посты на стене пользователя. GET /api/posts/user/{username}/wall
+     * Gets posts on user's wall. GET /api/posts/user/{username}/wall
      *
-     * @param {string} username - Имя пользователя
-     * @param {number} limit - Количество
-     * @param {string|null} cursor - Курсор пагинации
+     * @param {string} username - Username
+     * @param {number} limit - Count
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getWallByUser(username, limit = 20, cursor = null) {
@@ -485,65 +469,63 @@ export class ITDClient {
     }
     
     /**
-     * Удаляет пост (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * Deletes post     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async deletePost(postId) {
         return await this.posts.deletePost(postId);
     }
 
     /**
-     * Восстанавливает удалённый пост. POST /api/posts/{id}/restore
+     * Restores deleted post. POST /api/posts/{id}/restore
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async restorePost(postId) {
         return await this.posts.restorePost(postId);
     }
     
     /**
-     * Закрепляет пост. POST /api/posts/{id}/pin → { success: true, pinnedPostId }
+     * Pins post. POST /api/posts/{id}/pin → { success: true, pinnedPostId }
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async pinPost(postId) {
         return await this.posts.pinPost(postId);
     }
 
     /**
-     * Открепляет пост. DELETE /api/posts/{id}/pin → { success: true, pinnedPostId: null }
+     * Unpins post. DELETE /api/posts/{id}/pin → { success: true, pinnedPostId: null }
      *
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True on success
      */
     async unpinPost(postId) {
         return await this.posts.unpinPost(postId);
     }
     
     /**
-     * Делает репост (удобный метод)
-     * 
-     * @param {string} postId - ID поста для репоста
-     * @param {string|null} comment - Комментарий к репосту (опционально)
-     * @returns {Promise<Object|null>} Данные созданного репоста или null
+     * Reposts     * 
+     * @param {string} postId - Post ID to repost
+     * @param {string|null} comment - Repost comment (optional)
+     * @returns {Promise<Object|null>} Created repost data or null
      */
     async repost(postId, comment = null) {
         return await this.posts.repost(postId, comment);
     }
     
     /**
-     * Ставит лайк на пост
+     * Likes post
      * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} { liked: true, likesCount: number } или null при ошибке
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} { liked, likesCount } or null on error
      */
     async likePost(postId) {
         if (!await this.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
@@ -554,11 +536,11 @@ export class ITDClient {
             if (response.status === 200 || response.status === 201) {
                 return response.data; // { liked: true, likesCount: number }
             } else {
-                console.error(`Ошибка лайка: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Like error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при лайке:', error.message);
+            console.error('Exception liking:', error.message);
             if (error.response) {
                 console.error('Response:', error.response.status, error.response.data);
             }
@@ -567,14 +549,14 @@ export class ITDClient {
     }
     
     /**
-     * Убирает лайк с поста
+     * Unlikes post
      * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} { liked: false, likesCount: number } или null при ошибке
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} { liked, likesCount } or null on error
      */
     async unlikePost(postId) {
         if (!await this.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
@@ -585,14 +567,14 @@ export class ITDClient {
             if (response.status === 200 || response.status === 204) {
                 return response.data || { liked: false, likesCount: 0 };
             } else {
-                console.error(`Ошибка убирания лайка: ${response.status}`);
+                console.error(`Unlike error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при убирании лайка:', error.message);
+            console.error('Exception unliking:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -602,88 +584,88 @@ export class ITDClient {
     }
     
     /**
-     * Добавляет комментарий к посту
+     * Adds comment to post
      * 
-     * @param {string} postId - ID поста
-     * @param {string} text - Текст (пустая строка для голосового)
-     * @param {string|null} replyToCommentId - ID комментария для ответа (опционально)
-     * @param {string[]|null} attachmentIds - ID загруженных файлов (audio/ogg для голосовых)
-     * @returns {Promise<Object|null>} Данные комментария
+     * @param {string} postId - Post ID
+     * @param {string} text - Text (empty for voice)
+     * @param {string|null} replyToCommentId - Comment ID to reply to (optional)
+     * @param {string[]|null} attachmentIds - Uploaded file IDs (audio/ogg for voice)
+     * @returns {Promise<Object|null>} Comment data
      */
     async addComment(postId, text, replyToCommentId = null, attachmentIds = null) {
         return await this.comments.addComment(postId, text, replyToCommentId, attachmentIds);
     }
 
     /**
-     * Добавляет голосовое сообщение в комментарий. Загружает audio/ogg и создаёт комментарий.
+     * Adds voice message as comment. Uploads audio/ogg and creates comment.
      *
-     * @param {string} postId - ID поста
-     * @param {string} audioPath - Путь к аудиофайлу (audio/ogg)
-     * @param {string|null} replyToCommentId - ID комментария для ответа (опционально)
-     * @returns {Promise<Object|null>} Данные созданного комментария или null
+     * @param {string} postId - Post ID
+     * @param {string} audioPath - Path to audio file (audio/ogg)
+     * @param {string|null} replyToCommentId - Comment ID to reply to (optional)
+     * @returns {Promise<Object|null>} Created comment data or null
      */
     async addVoiceComment(postId, audioPath, replyToCommentId = null) {
         return await this.comments.addVoiceComment(postId, audioPath, replyToCommentId);
     }
 
     /**
-     * Ответ на комментарий (POST /api/comments/:id/replies).
+     * Reply to comment (POST /api/comments/:id/replies).
      *
-     * @param {string} commentId - ID комментария, на который отвечаем
-     * @param {string} content - Текст ответа
-     * @param {string} replyToUserId - ID пользователя-автора комментария (обязательно для API)
-     * @returns {Promise<Object|null>} Данные созданного комментария-ответа или null при ошибке
+     * @param {string} commentId - Comment ID to reply to
+     * @param {string} content - Reply text
+     * @param {string} replyToUserId - Comment author user ID (required by API)
+     * @returns {Promise<Object|null>} Created reply data or null on error
      */
     async replyToComment(commentId, content, replyToUserId) {
         return await this.comments.replyToComment(commentId, content, replyToUserId);
     }
     
     /**
-     * Ставит лайк на комментарий
+     * Likes comment
      * 
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<Object|null>} { liked: true, likesCount: number } или null при ошибке
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<Object|null>} { liked, likesCount } or null on error
      */
     async likeComment(commentId) {
         return await this.comments.likeComment(commentId);
     }
     
     /**
-     * Убирает лайк с комментария
+     * Unlikes comment
      * 
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<Object|null>} { liked: false, likesCount: number } или null при ошибке
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<Object|null>} { liked, likesCount } or null on error
      */
     async unlikeComment(commentId) {
         return await this.comments.unlikeComment(commentId);
     }
     
     /**
-     * Удаляет комментарий
+     * Deletes comment
      * 
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<boolean>} True on success
      */
     async deleteComment(commentId) {
         return await this.comments.deleteComment(commentId);
     }
 
     /**
-     * Восстанавливает удалённый комментарий. POST /api/comments/{id}/restore
+     * Restores deleted comment. POST /api/comments/{id}/restore
      *
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<boolean>} True on success
      */
     async restoreComment(commentId) {
         return await this.comments.restoreComment(commentId);
     }
     
     /**
-     * Получает комментарии к посту
+     * Gets comments for post
      * 
-     * @param {string} postId - ID поста
-     * @param {number} limit - Количество комментариев
-     * @param {string} sort - Сортировка: "popular", "new", "old"
+     * @param {string} postId - Post ID
+     * @param {number} limit - Number of comments
+     * @param {string} sort - Sort: "popular", "new", "old"
      * @returns {Promise<Object>} { comments: [], total, hasMore, nextCursor }
      */
     async getComments(postId, limit = 20, sort = 'popular') {
@@ -691,319 +673,319 @@ export class ITDClient {
     }
     
     /**
-     * Обновляет профиль текущего пользователя.
+     * Updates current user profile.
      * PUT /api/users/me → { id, username, displayName, bio, updatedAt }
      *
-     * @param {string|null} bio - Новое описание профиля (опционально)
-     * @param {string|null} displayName - Новое отображаемое имя (опционально)
-     * @param {string|null} username - Новый username (опционально)
-     * @param {string|null} bannerId - ID загруженного баннера (опционально)
-     * @returns {Promise<Object|null>} Обновленные данные профиля или null при ошибке
+     * @param {string|null} bio - New profile description (optional)
+     * @param {string|null} displayName - New display name (optional)
+     * @param {string|null} username - New username (optional)
+     * @param {string|null} bannerId - Uploaded banner ID (optional)
+     * @returns {Promise<Object|null>} Updated profile data or null on error
      */
     async updateProfile(bio = null, displayName = null, username = null, bannerId = null) {
         return await this.users.updateProfile(bio, displayName, username, bannerId);
     }
 
     /**
-     * Получает настройки приватности.
+     * Gets privacy settings.
      * GET /api/users/me/privacy → { isPrivate, wallClosed }
      *
-     * @returns {Promise<Object|null>} { isPrivate, wallClosed } или null
+     * @returns {Promise<Object|null>} { isPrivate, wallClosed } or null
      */
     async getPrivacy() {
         return await this.users.getPrivacy();
     }
 
     /**
-     * Обновляет настройки приватности.
+     * Updates privacy settings.
      * PUT /api/users/me/privacy → { isPrivate, wallClosed }
      *
      * @param {Object} options - { isPrivate?: boolean, wallClosed?: boolean }
-     * @returns {Promise<Object|null>} { isPrivate, wallClosed } или null
+     * @returns {Promise<Object|null>} { isPrivate, wallClosed } or null
      */
     async updatePrivacy(options = {}) {
         return await this.users.updatePrivacy(options);
     }
     
     /**
-     * Получает данные текущего пользователя
+     * Gets current user data
      * 
-     * @returns {Promise<Object|null>} Данные профиля или null при ошибке
+     * @returns {Promise<Object|null>} Profile data or null on error
      */
     async getMyProfile() {
         return await this.users.getMyProfile();
     }
     
     /**
-     * Получает профиль пользователя по username
+     * Gets user profile by username
      * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} Данные профиля или null при ошибке
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} Profile data or null on error
      */
     async getUserProfile(username) {
         return await this.users.getUserProfile(username);
     }
     
     /**
-     * Подписывается на пользователя
+     * Follows user
      * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} { following: true, followersCount: number } или null при ошибке
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} { following: true, followersCount: number } or null on error
      */
     async followUser(username) {
         return await this.users.followUser(username);
     }
     
     /**
-     * Отписывается от пользователя
+     * Unfollows user
      * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} { following: false, followersCount: number } или null при ошибке
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} { following: false, followersCount: number } or null on error
      */
     async unfollowUser(username) {
         return await this.users.unfollowUser(username);
     }
     
     /**
-     * Получает список подписчиков пользователя
+     * Gets user's followers list
      * 
-     * @param {string} username - Имя пользователя
-     * @param {number} page - Номер страницы (начиная с 1)
-     * @param {number} limit - Количество на странице
-     * @returns {Promise<Object|null>} { users: [], pagination: {} } или null
+     * @param {string} username - Username
+     * @param {number} page - Page number (from 1)
+     * @param {number} limit - Items per page
+     * @returns {Promise<Object|null>} { users: [], pagination: {} } or null
      */
     async getFollowers(username, page = 1, limit = 30) {
         return await this.users.getFollowers(username, page, limit);
     }
     
     /**
-     * Получает список подписок пользователя
+     * Gets user's following list
      * 
-     * @param {string} username - Имя пользователя
-     * @param {number} page - Номер страницы (начиная с 1)
-     * @param {number} limit - Количество на странице
-     * @returns {Promise<Object|null>} { users: [], pagination: {} } или null
+     * @param {string} username - Username
+     * @param {number} page - Page number (from 1)
+     * @param {number} limit - Items per page
+     * @returns {Promise<Object|null>} { users: [], pagination: {} } or null
      */
     async getFollowing(username, page = 1, limit = 30) {
         return await this.users.getFollowing(username, page, limit);
     }
     
     /**
-     * Получает клан пользователя (эмодзи из avatar)
+     * Gets user's clan (emoji from avatar)
      * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<string|null>} Эмодзи клана или null
+     * @param {string} username - Username
+     * @returns {Promise<string|null>} Clan emoji or null
      */
     async getUserClan(username) {
         return await this.users.getUserClan(username);
     }
     
     /**
-     * Получает список уведомлений.
+     * Gets notifications list.
      * GET /api/notifications/?offset=0&limit=20 → { notifications: [], hasMore }
      *
-     * @param {number} limit - Количество уведомлений
-     * @param {number} offset - Смещение для пагинации
-     * @param {string|null} type - Фильтр по типу: 'reply', 'like', 'wall_post', 'follow', 'comment'
-     * @returns {Promise<Object|null>} { notifications: [], hasMore } или null
+     * @param {number} limit - Number of notifications
+     * @param {number} offset - Pagination offset
+     * @param {string|null} type - Filter by type: 'reply', 'like', 'wall_post', 'follow', 'comment'
+     * @returns {Promise<Object|null>} { notifications: [], hasMore } or null
      */
     async getNotifications(limit = 20, offset = 0, type = null) {
         return await this.notifications.getNotifications(limit, offset, type);
     }
 
     /**
-     * Получает уведомления определенного типа
+     * Gets notifications of given type
      *
-     * @param {string} type - Тип: 'reply', 'like', 'wall_post', 'follow', 'comment'
-     * @param {number} limit - Количество
-     * @param {number} offset - Смещение
-     * @returns {Promise<Object|null>} { notifications: [], hasMore } или null
+     * @param {string} type - Type: 'reply', 'like', 'wall_post', 'follow', 'comment'
+     * @param {number} limit - Count
+     * @param {number} offset - Offset
+     * @returns {Promise<Object|null>} { notifications: [], hasMore } or null
      */
     async getNotificationsByType(type, limit = 20, offset = 0) {
         return await this.notifications.getNotifications(limit, offset, type);
     }
 
     /**
-     * Отмечает несколько уведомлений как прочитанные.
+     * Marks several notifications as read.
      * POST /api/notifications/read-batch → { success: true, count }
      *
-     * @param {string[]} ids - Массив ID уведомлений
-     * @returns {Promise<Object|null>} { success: true, count } или null
+     * @param {string[]} ids - Array of notification IDs
+     * @returns {Promise<Object|null>} { success: true, count } or null
      */
     async markNotificationsAsReadBatch(ids) {
         return await this.notifications.markAsReadBatch(ids);
     }
     
     /**
-     * Отмечает уведомление как прочитанное
+     * Marks notification as read
      * 
-     * @param {string} notificationId - ID уведомления
-     * @returns {Promise<Object|null>} { success: true } или null при ошибке
+     * @param {string} notificationId - Notification ID
+     * @returns {Promise<Object|null>} { success: true } or null on error
      */
     async markNotificationAsRead(notificationId) {
         return await this.notifications.markAsRead(notificationId);
     }
     
     /**
-     * Отмечает все уведомления как прочитанные
+     * Marks all notifications as read
      * 
-     * @returns {Promise<boolean>} True если успешно
+     * @returns {Promise<boolean>} True on success
      */
     async markAllNotificationsAsRead() {
         return await this.notifications.markAllAsRead();
     }
     
     /**
-     * Получает количество непрочитанных уведомлений
+     * Gets unread notification count
      * 
-     * @returns {Promise<number|null>} Количество уведомлений или null при ошибке
+     * @returns {Promise<number|null>} Number of notifications or null on error
      */
     async getNotificationCount() {
         return await this.notifications.getUnreadCount();
     }
     
     /**
-     * Получает трендовые хэштеги
+     * Gets trending hashtags
      * 
-     * @param {number} limit - Количество хэштегов (по умолчанию 10)
-     * @returns {Promise<Object|null>} { hashtags: [] } или null при ошибке
+     * @param {number} limit - Number of hashtags (default 10)
+     * @returns {Promise<Object|null>} { hashtags: [] } or null on error
      */
     async getTrendingHashtags(limit = 10) {
         return await this.hashtags.getTrending(limit);
     }
     
     /**
-     * Получает посты по хэштегу
+     * Gets posts by hashtag
      * 
-     * @param {string} hashtagName - Имя хэштега (без #)
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
-     * @returns {Promise<Object|null>} { posts: [], hashtag: {}, pagination: {} } или null при ошибке
+     * @param {string} hashtagName - Hashtag name (without #)
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
+     * @returns {Promise<Object|null>} { posts: [], hashtag: {}, pagination: {} } or null on error
      */
     async getPostsByHashtag(hashtagName, limit = 20, cursor = null) {
         return await this.hashtags.getPostsByHashtag(hashtagName, limit, cursor);
     }
     
     /**
-     * Получает топ кланов по количеству участников
+     * Gets top clans by member count
      * 
-     * @returns {Promise<Array|null>} Массив кланов [{ avatar: "🦎", memberCount: 3794 }, ...] или null при ошибке
+     * @returns {Promise<Array|null>} Array of clans [{ avatar: "🦎", memberCount: 3794 }, ...] or null on error
      */
     async getTopClans() {
         return await this.users.getTopClans();
     }
     
     /**
-     * Получает рекомендации кого подписаться
+     * Gets who-to-follow suggestions
      * 
-     * @returns {Promise<Array|null>} Массив пользователей или null при ошибке
+     * @returns {Promise<Array|null>} Array of users or null on error
      */
     async getWhoToFollow() {
         return await this.users.getWhoToFollow();
     }
     
     /**
-     * Загружает файл (изображение) на сервер
+     * Uploads file (image) to server
      * 
-     * @param {string} filePath - Путь к файлу
-     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } или null при ошибке
+     * @param {string} filePath - Path to file
+     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } or null on error
      */
     async uploadFile(filePath) {
         return await this.files.uploadFile(filePath);
     }
 
     /**
-     * Получает информацию о файле. GET /api/files/{id}
+     * Gets file info. GET /api/files/{id}
      *
-     * @param {string} fileId - ID файла
-     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } или null
+     * @param {string} fileId - File ID
+     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } or null
      */
     async getFile(fileId) {
         return await this.files.getFile(fileId);
     }
 
     /**
-     * Удаляет файл. DELETE /api/files/{id}
+     * Deletes file. DELETE /api/files/{id}
      *
-     * @param {string} fileId - ID файла
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} fileId - File ID
+     * @returns {Promise<boolean>} True on success
      */
     async deleteFile(fileId) {
         return await this.files.deleteFile(fileId);
     }
     
     /**
-     * Отправляет репорт на пост, комментарий или пользователя
+     * Submits report for post, comment or user
      * 
-     * @param {string} targetType - Тип цели: "post", "comment", "user"
-     * @param {string} targetId - ID цели
-     * @param {string} reason - Причина репорта (по умолчанию "other")
-     * @param {string} description - Описание проблемы
-     * @returns {Promise<Object|null>} { id, createdAt } или null при ошибке
+     * @param {string} targetType - Target type: "post", "comment", "user"
+     * @param {string} targetId - Target ID
+     * @param {string} reason - Report reason (default "other")
+     * @param {string} description - Problem description
+     * @returns {Promise<Object|null>} { id, createdAt } or null on error
      */
     async report(targetType, targetId, reason = 'other', description = '') {
         return await this.reports.report(targetType, targetId, reason, description);
     }
     
     /**
-     * Отправляет репорт на пост
+     * Submits report for post
      * 
-     * @param {string} postId - ID поста
-     * @param {string} reason - Причина репорта (по умолчанию "other")
-     * @param {string} description - Описание проблемы
-     * @returns {Promise<Object|null>} { id, createdAt } или null при ошибке
+     * @param {string} postId - Post ID
+     * @param {string} reason - Report reason (default "other")
+     * @param {string} description - Problem description
+     * @returns {Promise<Object|null>} { id, createdAt } or null on error
      */
     async reportPost(postId, reason = 'other', description = '') {
         return await this.reports.reportPost(postId, reason, description);
     }
     
     /**
-     * Отправляет репорт на комментарий
+     * Submits report for comment
      * 
-     * @param {string} commentId - ID комментария
-     * @param {string} reason - Причина репорта (по умолчанию "other")
-     * @param {string} description - Описание проблемы
-     * @returns {Promise<Object|null>} { id, createdAt } или null при ошибке
+     * @param {string} commentId - Comment ID
+     * @param {string} reason - Report reason (default "other")
+     * @param {string} description - Problem description
+     * @returns {Promise<Object|null>} { id, createdAt } or null on error
      */
     async reportComment(commentId, reason = 'other', description = '') {
         return await this.reports.reportComment(commentId, reason, description);
     }
     
     /**
-     * Отправляет репорт на пользователя
+     * Submits report for user
      * 
-     * @param {string} userId - ID пользователя
-     * @param {string} reason - Причина репорта (по умолчанию "other")
-     * @param {string} description - Описание проблемы
-     * @returns {Promise<Object|null>} { id, createdAt } или null при ошибке
+     * @param {string} userId - User ID
+     * @param {string} reason - Report reason (default "other")
+     * @param {string} description - Problem description
+     * @returns {Promise<Object|null>} { id, createdAt } or null on error
      */
     async reportUser(userId, reason = 'other', description = '') {
         return await this.reports.reportUser(userId, reason, description);
     }
 
     /**
-     * Получает статус верификации. GET /api/verification/status
+     * Gets verification status. GET /api/verification/status
      *
-     * @returns {Promise<Object|null>} Статус верификации или null
+     * @returns {Promise<Object|null>} Verification status or null
      */
     async getVerificationStatus() {
         return await this.verification.getStatus();
     }
 
     /**
-     * Подаёт заявку на верификацию. POST /api/verification/submit
+     * Submits verification request. POST /api/verification/submit
      *
-     * @param {string} videoUrl - URL загруженного видео (из uploadFile)
-     * @returns {Promise<Object|null>} { success, request } или null
+     * @param {string} videoUrl - URL of uploaded video (from uploadFile)
+     * @returns {Promise<Object|null>} { success, request } or null
      */
     async submitVerification(videoUrl) {
         return await this.verification.submit(videoUrl);
     }
 
     /**
-     * Получает статус платформы. GET /api/platform/status
+     * Gets platform status. GET /api/platform/status
      *
-     * @returns {Promise<Object|null>} Статус платформы или null
+     * @returns {Promise<Object|null>} Platform status or null
      */
     async getPlatformStatus() {
         try {
@@ -1013,54 +995,53 @@ export class ITDClient {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка получения статуса платформы:', error.message);
+            console.error('Error getting platform status:', error.message);
             return null;
         }
     }
     
     /**
-     * Выполняет поиск пользователей и хэштегов
+     * Searches users and hashtags
      * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} userLimit - Максимальное количество пользователей (по умолчанию 5)
-     * @param {number} hashtagLimit - Максимальное количество хэштегов (по умолчанию 5)
-     * @returns {Promise<Object|null>} { users: [], hashtags: [] } или null при ошибке
+     * @param {string} query - Search query
+     * @param {number} userLimit - Max number of users (default 5)
+     * @param {number} hashtagLimit - Max number of hashtags (default 5)
+     * @returns {Promise<Object|null>} { users: [], hashtags: [] } or null on error
      */
     async search(query, userLimit = 5, hashtagLimit = 5) {
         return await this.searchManager.search(query, userLimit, hashtagLimit);
     }
     
     /**
-     * Ищет пользователей
+     * Searches users
      * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} limit - Максимальное количество пользователей (по умолчанию 5)
-     * @returns {Promise<Array|null>} Массив пользователей или null при ошибке
+     * @param {string} query - Search query
+     * @param {number} limit - Max number of users (default 5)
+     * @returns {Promise<Array|null>} Array of users or null on error
      */
     async searchUsers(query, limit = 5) {
         return await this.searchManager.searchUsers(query, limit);
     }
     
     /**
-     * Ищет хэштеги
+     * Searches hashtags
      * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} limit - Максимальное количество хэштегов (по умолчанию 5)
-     * @returns {Promise<Array|null>} Массив хэштегов или null при ошибке
+     * @param {string} query - Search query
+     * @param {number} limit - Max number of hashtags (default 5)
+     * @returns {Promise<Array|null>} Array of hashtags or null on error
      */
     async searchHashtags(query, limit = 5) {
         return await this.searchManager.searchHashtags(query, limit);
     }
     
-    // ========== USER-FRIENDLY МЕТОДЫ ==========
+    // ========== USER-FRIENDLY METHODS ==========
     
-    // === Посты ===
+    // === Posts ===
     
     /**
-     * Получает трендовые посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets trending posts     * 
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getTrendingPosts(limit = 20, cursor = null) {
@@ -1068,10 +1049,9 @@ export class ITDClient {
     }
     
     /**
-     * Получает недавние посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets recent posts     * 
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getRecentPosts(limit = 20, cursor = null) {
@@ -1079,11 +1059,10 @@ export class ITDClient {
     }
     
     /**
-     * Получает свои посты (удобный метод)
-     * 
-     * @param {number} limit - Количество постов (по умолчанию 20)
-     * @param {string} sort - Сортировка: 'new', 'old', 'popular' (по умолчанию 'new')
-     * @param {string|null} cursor - Курсор для пагинации
+     * Gets own posts     * 
+     * @param {number} limit - Number of posts (default 20)
+     * @param {string} sort - Sort: 'new', 'old', 'popular' (default 'new')
+     * @param {string|null} cursor - Pagination cursor
      * @returns {Promise<Object>} { posts: [], pagination: {} }
      */
     async getMyPosts(limit = 20, sort = 'new', cursor = null) {
@@ -1091,133 +1070,120 @@ export class ITDClient {
     }
     
     /**
-     * Получает последний пост пользователя (удобный метод)
-     * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} Последний пост или null
+     * Gets user's latest post     * 
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} Latest post or null
      */
     async getUserLatestPost(username) {
         return await this.posts.getUserLatestPost(username);
     }
     
     /**
-     * Получает количество лайков поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество лайков
+     * Gets post likes count     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Likes count
      */
     async getPostLikesCount(postId) {
         return await this.posts.getPostLikesCount(postId);
     }
     
     /**
-     * Получает количество просмотров поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество просмотров
+     * Gets post views count     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Views count
      */
     async getPostViewsCount(postId) {
         return await this.posts.getPostViewsCount(postId);
     }
     
     /**
-     * Получает количество комментариев поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество комментариев
+     * Gets post comments count     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Number of comments
      */
     async getPostCommentsCount(postId) {
         return await this.posts.getPostCommentsCount(postId);
     }
     
     /**
-     * Получает статистику поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} { likes: number, views: number, comments: number, reposts: number } или null
+     * Gets post statistics     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} { likes: number, views: number, comments: number, reposts: number } or null
      */
     async getPostStats(postId) {
         return await this.posts.getPostStats(postId);
     }
     
-    // === Пользователи ===
+    // === Users ===
     
     /**
-     * Проверяет, подписан ли текущий пользователь на указанного (удобный метод)
-     * 
-     * @param {string} username - Имя пользователя для проверки
-     * @returns {Promise<boolean>} True если подписан, false если нет или ошибка
+     * Checks if current user follows the given user     * 
+     * @param {string} username - Username to check
+     * @returns {Promise<boolean>} True if following, false otherwise or on error
      */
     async isFollowing(username) {
         return await this.users.isFollowing(username);
     }
     
     /**
-     * Получает количество своих подписчиков (удобный метод)
-     * 
-     * @returns {Promise<number>} Количество подписчиков
+     * Gets own followers count     * 
+     * @returns {Promise<number>} Followers count
      */
     async getMyFollowersCount() {
         return await this.users.getMyFollowersCount();
     }
     
     /**
-     * Получает количество своих подписок (удобный метод)
-     * 
-     * @returns {Promise<number>} Количество подписок
+     * Gets own following count     * 
+     * @returns {Promise<number>} Following count
      */
     async getMyFollowingCount() {
         return await this.users.getMyFollowingCount();
     }
     
     /**
-     * Получает свой клан (эмодзи аватара) (удобный метод)
-     * 
-     * @returns {Promise<string|null>} Эмодзи клана или null
+     * Gets own clan (avatar emoji)     * 
+     * @returns {Promise<string|null>} Clan emoji or null
      */
     async getMyClan() {
         return await this.users.getMyClan();
     }
     
-    // === Комментарии ===
+    // === Comments ===
     
     /**
-     * Получает топ-комментарий поста (с наибольшим количеством лайков) (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} Топ-комментарий или null
+     * Gets top comment for post (most likes)     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} Top comment or null
      */
     async getTopComment(postId) {
         return await this.comments.getTopComment(postId);
     }
     
     /**
-     * Проверяет, есть ли комментарии у поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если есть комментарии
+     * Checks if post has comments     * 
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True if has comments
      */
     async hasComments(postId) {
         return await this.comments.hasComments(postId);
     }
     
-    // === Уведомления ===
+    // === Notifications ===
     
     /**
-     * Проверяет, есть ли непрочитанные уведомления (удобный метод)
-     * 
-     * @returns {Promise<boolean>} True если есть непрочитанные
+     * Checks for unread notifications     * 
+     * @returns {Promise<boolean>} True if has unread
      */
     async hasUnreadNotifications() {
         return await this.notifications.hasUnreadNotifications();
     }
     
     /**
-     * Получает только непрочитанные уведомления (удобный метод)
-     *
-     * @param {number} limit - Количество
-     * @param {number} offset - Смещение
-     * @returns {Promise<Object|null>} { notifications: [], hasMore } или null
+     * Gets only unread notifications     *
+     * @param {number} limit - Count
+     * @param {number} offset - Offset
+     * @returns {Promise<Object|null>} { notifications: [], hasMore } or null
      */
     async getUnreadNotifications(limit = 20, offset = 0) {
         return await this.notifications.getUnreadNotifications(limit, offset);

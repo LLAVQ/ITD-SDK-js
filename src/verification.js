@@ -1,5 +1,5 @@
 /**
- * Модуль верификации аккаунта
+ * Account verification module
  */
 export class VerificationManager {
     constructor(client) {
@@ -8,9 +8,9 @@ export class VerificationManager {
     }
 
     /**
-     * Получает статус верификации. GET /api/verification/status
+     * Gets verification status. GET /api/verification/status
      *
-     * @returns {Promise<Object|null>} Статус верификации или null
+     * @returns {Promise<Object|null>} Verification status or null
      */
     async getStatus() {
         if (!await this.client.auth.checkAuth()) return null;
@@ -22,16 +22,16 @@ export class VerificationManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка получения статуса верификации:', error.message);
+            console.error('Error getting verification status:', error.message);
             return null;
         }
     }
 
     /**
-     * Подаёт заявку на верификацию. POST /api/verification/submit
+     * Submits verification request. POST /api/verification/submit
      *
-     * @param {string} videoUrl - URL загруженного видео (из uploadFile)
-     * @returns {Promise<Object|null>} { success, request: { id, status, ... } } или null
+     * @param {string} videoUrl - URL of uploaded video (from uploadFile)
+     * @returns {Promise<Object|null>} { success, request: { id, status, ... } } or null
      */
     async submit(videoUrl) {
         if (!await this.client.auth.checkAuth()) return null;
@@ -43,7 +43,7 @@ export class VerificationManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка подачи заявки на верификацию:', error.message);
+            console.error('Error submitting verification request:', error.message);
             return null;
         }
     }

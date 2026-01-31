@@ -1,7 +1,7 @@
 /**
- * 📝 Пример 1: Базовое использование SDK
- * 
- * Показывает простоту работы с API через удобные методы.
+ * 📝 Example 1: Basic SDK usage
+ *
+ * Shows how simple it is to work with the API via convenient methods.
  */
 
 import { ITDClient } from 'itd-sdk-js';
@@ -10,42 +10,42 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function main() {
-    console.log('📝 === Базовое использование SDK ===\n');
+    console.log('📝 === Basic SDK usage ===\n');
 
-    // Создаём клиент (токен подхватывается из .env автоматически)
+    // Create client (token is read from .env automatically)
     const client = new ITDClient();
 
     try {
-        // Получаем свой профиль
-        console.log('👤 Получаю свой профиль...');
+        // Get own profile
+        console.log('👤 Getting my profile...');
         const profile = await client.getMyProfile();
-        console.log(`   Имя: ${profile.displayName}`);
+        console.log(`   Name: ${profile.displayName}`);
         console.log(`   Username: ${profile.username}`);
-        console.log(`   Клан: ${profile.avatar}`);
-        console.log(`   Подписчиков: ${profile.followersCount}`);
+        console.log(`   Clan: ${profile.avatar}`);
+        console.log(`   Followers: ${profile.followersCount}`);
         console.log();
 
-        // Получаем трендовые посты
-        console.log('🔥 Получаю трендовые посты...');
+        // Get trending posts
+        console.log('🔥 Getting trending posts...');
         const trending = await client.getTrendingPosts(5);
-        console.log(`   Найдено постов: ${trending.posts.length}`);
+        console.log(`   Posts found: ${trending.posts.length}`);
         if (trending.posts.length > 0) {
             const firstPost = trending.posts[0];
-            console.log(`   Первый пост: ${firstPost.content?.substring(0, 50)}...`);
-            console.log(`   Лайков: ${firstPost.likesCount}, Просмотров: ${firstPost.viewsCount}`);
+            console.log(`   First post: ${firstPost.content?.substring(0, 50)}...`);
+            console.log(`   Likes: ${firstPost.likesCount}, Views: ${firstPost.viewsCount}`);
         }
         console.log();
 
-        // Получаем свои посты
-        console.log('📄 Получаю свои посты...');
+        // Get own posts
+        console.log('📄 Getting my posts...');
         const myPosts = await client.getMyPosts(3);
-        console.log(`   Моих постов: ${myPosts.posts.length}`);
+        console.log(`   My posts: ${myPosts.posts.length}`);
         myPosts.posts.forEach((post, i) => {
-            console.log(`   ${i + 1}. ${post.content?.substring(0, 40)}... (${post.likesCount} лайков)`);
+            console.log(`   ${i + 1}. ${post.content?.substring(0, 40)}... (${post.likesCount} likes)`);
         });
 
     } catch (error) {
-        console.error('❌ Ошибка:', error.message);
+        console.error('❌ Error:', error.message);
     }
 }
 

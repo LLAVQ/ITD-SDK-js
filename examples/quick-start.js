@@ -1,318 +1,276 @@
 /**
- * 🚀 QUICK START - Быстрый старт с ITD SDK
- * 
- * Этот пример показывает основные возможности SDK с подробными комментариями.
- * Идеально для тех, кто только начинает работать с библиотекой.
- * 
- * ПЕРЕД ЗАПУСКОМ:
- * 1. Установите зависимости: npm install
- * 2. Скопируйте .env.example в .env и заполните ITD_ACCESS_TOKEN
- * 3. Создайте файл .cookies и вставьте туда cookies из браузера
- * 4. Запустите: node examples/quick-start.js
+ * 🚀 QUICK START — ITD SDK
+ *
+ * This example shows the main SDK features with detailed comments.
+ * Ideal for anyone new to the library.
+ *
+ * BEFORE RUNNING:
+ * 1. Install dependencies: npm install
+ * 2. Copy .env.example to .env and set ITD_ACCESS_TOKEN
+ * 3. Create .cookies and paste browser cookies into it
+ * 4. Run: node examples/quick-start.js
  */
 
 import { ITDClient } from 'itd-sdk-js';
 import dotenv from 'dotenv';
 
-// Загружаем переменные окружения из .env файла
+// Load environment variables from .env
 dotenv.config();
 
 async function quickStart() {
     console.log('🚀 === ITD SDK - Quick Start ===\n');
 
     // ============================================
-    // ШАГ 1: Создание клиента
+    // STEP 1: Create client
     // ============================================
-    console.log('📦 Шаг 1: Создаю клиент...\n');
-    
-    // Создаем экземпляр клиента
-    // Клиент автоматически:
-    // - Загружает настройки из .env (ITD_BASE_URL, ITD_USER_AGENT и т.д.)
-    // - Загружает cookies из файла .cookies
-    // - Настраивает автоматическое обновление токена
+    console.log('📦 Step 1: Creating client...\n');
+
+    // Create client instance
+    // The client automatically:
+    // - Loads config from .env (ITD_BASE_URL, ITD_USER_AGENT, etc.)
+    // - Loads cookies from .cookies
+    // - Configures automatic token refresh
     const client = new ITDClient();
-    
-    console.log('✅ Клиент создан\n');
+
+    console.log('✅ Client created\n');
 
     // ============================================
-    // ШАГ 2: Настройка авторизации
+    // STEP 2: Auth setup
     // ============================================
-    console.log('🔐 Шаг 2: Проверяю авторизацию...\n');
-    
-    // Токен подхватывается из .env автоматически. Если нет — пробуем refresh из .cookies
+    console.log('🔐 Step 2: Checking auth...\n');
+
+    // Token is read from .env automatically. If missing — try refresh from .cookies
     if (!client.accessToken && client.hasRefreshToken()) {
-        console.log('   Токена в .env нет, получаю через refresh из .cookies...\n');
+        console.log('   No token in .env, getting it via refresh from .cookies...\n');
         const ok = await client.ensureAuthenticated();
         if (!ok) {
-            console.log('❌ Не удалось получить токен из refresh_token\n');
+            console.log('❌ Failed to get token from refresh_token\n');
             return;
         }
     }
     if (!client.accessToken) {
-        console.log('❌ Нет токена. Добавьте ITD_ACCESS_TOKEN в .env или refresh_token в .cookies\n');
-        console.log('📋 Как получить токен:');
-        console.log('1. Откройте итд.com в браузере и войдите');
-        console.log('2. DevTools (F12) → Network → скопируйте Cookie в .cookies');
-        console.log('3. Или скопируйте accessToken из ответа /api/v1/auth/refresh в .env\n');
+        console.log('❌ No token. Add ITD_ACCESS_TOKEN to .env or refresh_token to .cookies\n');
+        console.log('📋 How to get a token:');
+        console.log('1. Open итд.com in the browser and log in');
+        console.log('2. DevTools (F12) → Network → copy Cookie into .cookies');
+        console.log('3. Or copy accessToken from /api/v1/auth/refresh response into .env\n');
         return;
     }
-    console.log('✅ Авторизация настроена\n');
+    console.log('✅ Auth configured\n');
 
     // ============================================
-    // ШАГ 3: Получение информации о себе
+    // STEP 3: Get current user info
     // ============================================
-    console.log('👤 Шаг 3: Получаю информацию о текущем пользователе...\n');
-    
-    // Получаем профиль текущего авторизованного пользователя
-    // Этот метод требует авторизации
+    console.log('👤 Step 3: Getting current user info...\n');
+
     const myProfile = await client.getMyProfile();
-    
+
     if (myProfile) {
-        console.log('✅ Профиль получен:');
-        console.log(`   Имя: ${myProfile.displayName}`);
+        console.log('✅ Profile loaded:');
+        console.log(`   Name: ${myProfile.displayName}`);
         console.log(`   Username: @${myProfile.username}`);
-        console.log(`   Клан (эмодзи): ${myProfile.avatar}`);
-        console.log(`   Подписчиков: ${myProfile.followersCount || 0}`);
-        console.log(`   Подписок: ${myProfile.followingCount || 0}`);
-        console.log(`   Постов: ${myProfile.postsCount || 0}\n`);
+        console.log(`   Clan (emoji): ${myProfile.avatar}`);
+        console.log(`   Followers: ${myProfile.followersCount || 0}`);
+        console.log(`   Following: ${myProfile.followingCount || 0}`);
+        console.log(`   Posts: ${myProfile.postsCount || 0}\n`);
     } else {
-        console.log('⚠️  Не удалось получить профиль (возможно токен недействителен)\n');
+        console.log('⚠️  Failed to get profile (token may be invalid)\n');
         return;
     }
 
     // ============================================
-    // ШАГ 4: Получение постов пользователя
+    // STEP 4: Get user posts
     // ============================================
-    console.log('📰 Шаг 4: Получаю посты пользователя...\n');
-    
-    // Получаем последние 5 постов пользователя
-    // Параметры:
-    // - username: имя пользователя (или null для своих постов)
-    // - limit: количество постов (по умолчанию 20)
-    // - sort: сортировка ('new', 'old', 'popular')
-    const username = myProfile.username; // Используем свой username
+    console.log('📰 Step 4: Getting user posts...\n');
+
+    const username = myProfile.username;
     const postsResult = await client.getPosts(username, 5, 'new');
-    
+
     if (postsResult && postsResult.posts.length > 0) {
-        console.log(`✅ Найдено постов: ${postsResult.posts.length}\n`);
-        
-        // Показываем первый пост
+        console.log(`✅ Found ${postsResult.posts.length} posts\n`);
+
         const firstPost = postsResult.posts[0];
-        console.log('📝 Первый пост:');
+        console.log('📝 First post:');
         console.log(`   ID: ${firstPost.id}`);
-        console.log(`   Текст: ${(firstPost.content || 'Без текста').substring(0, 100)}...`);
-        console.log(`   Лайков: ${firstPost.likesCount || 0}`);
-        console.log(`   Комментариев: ${firstPost.commentsCount || 0}`);
-        console.log(`   Просмотров: ${firstPost.viewsCount || 0}`);
-        console.log(`   Дата: ${new Date(firstPost.createdAt).toLocaleString('ru-RU')}\n`);
-        
-        // Сохраняем ID первого поста для дальнейших примеров
+        console.log(`   Text: ${(firstPost.content || 'No text').substring(0, 100)}...`);
+        console.log(`   Likes: ${firstPost.likesCount || 0}`);
+        console.log(`   Comments: ${firstPost.commentsCount || 0}`);
+        console.log(`   Views: ${firstPost.viewsCount || 0}`);
+        console.log(`   Date: ${new Date(firstPost.createdAt).toLocaleString()}\n`);
+
         const postId = firstPost.id;
-        
+
         // ============================================
-        // ШАГ 5: Лайк поста
+        // STEP 5: Like post
         // ============================================
-        console.log('❤️  Шаг 5: Ставлю лайк на первый пост...\n');
-        
-        // Ставим лайк на пост
-        // Метод возвращает объект с информацией о лайке
+        console.log('❤️  Step 5: Liking first post...\n');
+
         const likeResult = await client.likePost(postId);
-        
+
         if (likeResult) {
-            console.log(`✅ Лайк поставлен! Всего лайков: ${likeResult.likesCount}\n`);
+            console.log(`✅ Liked! Total likes: ${likeResult.likesCount}\n`);
         } else {
-            console.log('⚠️  Не удалось поставить лайк (возможно уже лайкнуто)\n');
+            console.log('⚠️  Failed to like (may already be liked)\n');
         }
-        
+
         // ============================================
-        // ШАГ 6: Получение комментариев
+        // STEP 6: Get comments
         // ============================================
-        console.log('💬 Шаг 6: Получаю комментарии к посту...\n');
-        
-        // Получаем комментарии к посту
-        // Параметры:
-        // - postId: ID поста
-        // - limit: количество комментариев (по умолчанию 20)
-        // - sort: сортировка ('new', 'old', 'popular')
+        console.log('💬 Step 6: Getting post comments...\n');
+
         const commentsResult = await client.getComments(postId, 5, 'new');
-        
+
         if (commentsResult && commentsResult.comments.length > 0) {
-            console.log(`✅ Найдено комментариев: ${commentsResult.comments.length}\n`);
-            
-            // Показываем первый комментарий
+            console.log(`✅ Found ${commentsResult.comments.length} comments\n`);
+
             const firstComment = commentsResult.comments[0];
-            console.log('💬 Первый комментарий:');
-            console.log(`   Автор: @${firstComment.author.username}`);
-            console.log(`   Текст: ${(firstComment.content || '').substring(0, 80)}...`);
-            console.log(`   Лайков: ${firstComment.likesCount || 0}\n`);
+            console.log('💬 First comment:');
+            console.log(`   Author: @${firstComment.author.username}`);
+            console.log(`   Text: ${(firstComment.content || '').substring(0, 80)}...`);
+            console.log(`   Likes: ${firstComment.likesCount || 0}\n`);
         } else {
-            console.log('📝 Комментариев пока нет\n');
+            console.log('📝 No comments yet\n');
         }
-        
+
         // ============================================
-        // ШАГ 7: Добавление комментария
+        // STEP 7: Add comment
         // ============================================
-        console.log('✍️  Шаг 7: Добавляю комментарий к посту...\n');
-        
-        // Добавляем комментарий к посту
-        // Параметры:
-        // - postId: ID поста
-        // - text: текст комментария
-        // - replyToId: ID комментария для ответа (опционально)
-        const commentText = 'Отличный пост! 👍';
+        console.log('✍️  Step 7: Adding comment to post...\n');
+
+        const commentText = 'Great post! 👍';
         const newComment = await client.addComment(postId, commentText);
-        
+
         if (newComment) {
-            console.log(`✅ Комментарий добавлен! ID: ${newComment.id}\n`);
+            console.log(`✅ Comment added! ID: ${newComment.id}\n`);
         } else {
-            console.log('⚠️  Не удалось добавить комментарий\n');
+            console.log('⚠️  Failed to add comment\n');
         }
-        
     } else {
-        console.log('📝 Посты не найдены\n');
+        console.log('📝 No posts found\n');
     }
 
     // ============================================
-    // ШАГ 8: Получение профиля другого пользователя
+    // STEP 8: Get another user's profile
     // ============================================
-    console.log('🔍 Шаг 8: Получаю профиль другого пользователя...\n');
-    
-    // Получаем профиль другого пользователя (публичная информация)
-    // Этот метод НЕ требует авторизации
-    const otherUsername = 'nowkie'; // Пример: известный пользователь
+    console.log('🔍 Step 8: Getting another user profile...\n');
+
+    const otherUsername = 'nowkie';
     const otherProfile = await client.getUserProfile(otherUsername);
-    
+
     if (otherProfile) {
-        console.log(`✅ Профиль @${otherUsername}:`);
-        console.log(`   Имя: ${otherProfile.displayName}`);
-        console.log(`   Клан: ${otherProfile.avatar}`);
-        console.log(`   Подписчиков: ${otherProfile.followersCount || 0}`);
-        console.log(`   Постов: ${otherProfile.postsCount || 0}`);
-        console.log(`   Верифицирован: ${otherProfile.verified ? '✅' : '❌'}\n`);
+        console.log(`✅ Profile @${otherUsername}:`);
+        console.log(`   Name: ${otherProfile.displayName}`);
+        console.log(`   Clan: ${otherProfile.avatar}`);
+        console.log(`   Followers: ${otherProfile.followersCount || 0}`);
+        console.log(`   Posts: ${otherProfile.postsCount || 0}`);
+        console.log(`   Verified: ${otherProfile.verified ? '✅' : '❌'}\n`);
     } else {
-        console.log(`⚠️  Пользователь @${otherUsername} не найден\n`);
+        console.log(`⚠️  User @${otherUsername} not found\n`);
     }
 
     // ============================================
-    // ШАГ 9: Поиск пользователей
+    // STEP 9: Search users
     // ============================================
-    console.log('🔎 Шаг 9: Ищу пользователей...\n');
-    
-    // Ищем пользователей по запросу
-    // Параметры:
-    // - query: поисковый запрос
-    // - limit: максимальное количество результатов (по умолчанию 5)
+    console.log('🔎 Step 9: Searching users...\n');
+
     const searchQuery = 'itd';
     const searchResult = await client.searchUsers(searchQuery, 3);
-    
+
     if (searchResult && searchResult.length > 0) {
-        console.log(`✅ Найдено пользователей: ${searchResult.length}\n`);
+        console.log(`✅ Found ${searchResult.length} users\n`);
         searchResult.forEach((user, index) => {
-            console.log(`   ${index + 1}. @${user.username} - ${user.displayName} (${user.followersCount} подписчиков)`);
+            console.log(`   ${index + 1}. @${user.username} - ${user.displayName} (${user.followersCount} followers)`);
         });
         console.log();
     } else {
-        console.log('📝 Пользователи не найдены\n');
+        console.log('📝 No users found\n');
     }
 
     // ============================================
-    // ШАГ 10: Получение уведомлений
+    // STEP 10: Get notifications
     // ============================================
-    console.log('🔔 Шаг 10: Получаю уведомления...\n');
-    
-    // Получаем список уведомлений (limit, offset)
+    console.log('🔔 Step 10: Getting notifications...\n');
+
     const notificationsResult = await client.getNotifications(5, 0);
-    
+
     if (notificationsResult && notificationsResult.notifications.length > 0) {
-        console.log(`✅ Найдено уведомлений: ${notificationsResult.notifications.length}\n`);
-        
-        // Показываем первое уведомление
+        console.log(`✅ Found ${notificationsResult.notifications.length} notifications\n`);
+
         const firstNotification = notificationsResult.notifications[0];
-        console.log('🔔 Первое уведомление:');
-        console.log(`   Тип: ${firstNotification.type || 'N/A'}`);
-        console.log(`   Прочитано: ${firstNotification.read ? '✅' : '❌'}`);
-        console.log(`   Дата: ${new Date(firstNotification.createdAt).toLocaleString('ru-RU')}\n`);
+        console.log('🔔 First notification:');
+        console.log(`   Type: ${firstNotification.type || 'N/A'}`);
+        console.log(`   Read: ${firstNotification.read ? '✅' : '❌'}`);
+        console.log(`   Date: ${new Date(firstNotification.createdAt).toLocaleString()}\n`);
     } else {
-        console.log('📭 Уведомлений нет\n');
+        console.log('📭 No notifications\n');
     }
 
     // ============================================
-    // ШАГ 11: Получение трендовых хэштегов
+    // STEP 11: Get trending hashtags
     // ============================================
-    console.log('🏷️  Шаг 11: Получаю трендовые хэштеги...\n');
-    
-    // Получаем трендовые хэштеги
-    // Параметры:
-    // - limit: количество хэштегов (по умолчанию 10)
+    console.log('🏷️  Step 11: Getting trending hashtags...\n');
+
     const hashtagsResult = await client.getTrendingHashtags(5);
-    
+
     if (hashtagsResult && hashtagsResult.hashtags.length > 0) {
-        console.log(`✅ Найдено хэштегов: ${hashtagsResult.hashtags.length}\n`);
+        console.log(`✅ Found ${hashtagsResult.hashtags.length} hashtags\n`);
         hashtagsResult.hashtags.forEach((hashtag, index) => {
-            console.log(`   ${index + 1}. #${hashtag.name} - ${hashtag.postsCount} постов`);
+            console.log(`   ${index + 1}. #${hashtag.name} - ${hashtag.postsCount} posts`);
         });
         console.log();
     } else {
-        console.log('📝 Хэштеги не найдены\n');
+        console.log('📝 No hashtags found\n');
     }
 
     // ============================================
-    // ШАГ 12: Получение популярных постов (лента)
+    // STEP 12: Get popular posts (feed)
     // ============================================
-    console.log('🔥 Шаг 12: Получаю популярные посты...\n');
-    
-    // Получаем популярные посты (публичная лента)
-    // Параметры:
-    // - limit: количество постов (по умолчанию 20)
-    // - cursor: курсор для пагинации (опционально)
+    console.log('🔥 Step 12: Getting popular posts...\n');
+
     const popularPosts = await client.getFeedPopular(3);
-    
+
     if (popularPosts && popularPosts.posts.length > 0) {
-        console.log(`✅ Найдено популярных постов: ${popularPosts.posts.length}\n`);
-        
-        // Показываем самый популярный пост
+        console.log(`✅ Found ${popularPosts.posts.length} popular posts\n`);
+
         const topPost = popularPosts.posts[0];
-        console.log('🔥 Самый популярный пост:');
-        console.log(`   Автор: @${topPost.author.username}`);
-        console.log(`   Лайков: ${topPost.likesCount}`);
-        console.log(`   Просмотров: ${topPost.viewsCount}`);
-        console.log(`   Текст: ${(topPost.content || 'Без текста').substring(0, 60)}...\n`);
+        console.log('🔥 Top post:');
+        console.log(`   Author: @${topPost.author.username}`);
+        console.log(`   Likes: ${topPost.likesCount}`);
+        console.log(`   Views: ${topPost.viewsCount}`);
+        console.log(`   Text: ${(topPost.content || 'No text').substring(0, 60)}...\n`);
     } else {
-        console.log('📝 Популярные посты не найдены\n');
+        console.log('📝 No popular posts found\n');
     }
 
     // ============================================
-    // ЗАВЕРШЕНИЕ
+    // DONE
     // ============================================
-    console.log('✅ === Quick Start завершен! ===\n');
-    console.log('📚 Что дальше?');
-    console.log('1. Изучите API_REFERENCE.md для полного списка методов');
-    console.log('2. Посмотрите другие примеры в папке examples/');
-    console.log('3. Создайте свой проект используя ITD SDK!\n');
+    console.log('✅ === Quick Start complete! ===\n');
+    console.log('📚 What next?');
+    console.log('1. Read API_REFERENCE.md for the full method list');
+    console.log('2. Try other examples in examples/');
+    console.log('3. Build your project with ITD SDK!\n');
 }
 
-// Запускаем quick start
 (async () => {
     try {
         await quickStart();
     } catch (error) {
-        console.error('\n❌ ОШИБКА при выполнении:');
+        console.error('\n❌ ERROR:');
         console.error(error.message);
-        
-        // Если есть детали ошибки - показываем их
+
         if (error.response) {
-            console.error('\n📋 Детали ошибки:');
-            console.error(`   Статус: ${error.response.status}`);
-            console.error(`   Данные: ${JSON.stringify(error.response.data, null, 2)}`);
+            console.error('\n📋 Error details:');
+            console.error(`   Status: ${error.response.status}`);
+            console.error(`   Data: ${JSON.stringify(error.response.data, null, 2)}`);
         }
-        
-        // Полезные советы при ошибках
-        console.error('\n💡 Возможные решения:');
-        console.error('1. Проверьте, что ITD_ACCESS_TOKEN указан в .env');
-        console.error('2. Проверьте, что файл .cookies существует и содержит refresh_token');
-        console.error('3. Обновите токен в .env из браузера (DevTools → Network → /api/v1/auth/refresh)');
-        console.error('4. Обновите cookies в .cookies из браузера\n');
-        
+
+        console.error('\n💡 Things to check:');
+        console.error('1. ITD_ACCESS_TOKEN is set in .env');
+        console.error('2. .cookies exists and contains refresh_token');
+        console.error('3. Update token in .env from browser (DevTools → Network → /api/v1/auth/refresh)');
+        console.error('4. Update cookies in .cookies from browser\n');
+
         process.exit(1);
     }
 })();

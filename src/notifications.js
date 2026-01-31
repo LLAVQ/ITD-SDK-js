@@ -1,5 +1,5 @@
 /**
- * Модуль для работы с уведомлениями
+ * Notifications module
  */
 export class NotificationsManager {
     constructor(client) {
@@ -8,17 +8,17 @@ export class NotificationsManager {
     }
 
     /**
-     * Получает список уведомлений.
+     * Gets notifications list.
      * GET /api/notifications/?offset=0&limit=20 → { notifications: [], hasMore }
      *
-     * @param {number} limit - Количество уведомлений
-     * @param {number} offset - Смещение для пагинации
-     * @param {string|null} type - Фильтр по типу: 'reply', 'like', 'wall_post', 'follow', 'comment' (на клиенте)
-     * @returns {Promise<Object|null>} { notifications: [], hasMore } или null при ошибке
+     * @param {number} limit - Number of notifications
+     * @param {number} offset - Pagination offset
+     * @param {string|null} type - Filter by type: 'reply', 'like', 'wall_post', 'follow', 'comment' (client-side)
+     * @returns {Promise<Object|null>} { notifications: [], hasMore } or null on error
      */
     async getNotifications(limit = 20, offset = 0, type = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -39,11 +39,11 @@ export class NotificationsManager {
 
                 return { notifications, hasMore };
             } else {
-                console.error(`Ошибка получения уведомлений: ${response.status}`);
+                console.error(`Error getting notifications: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении уведомлений:', error.message);
+            console.error('Exception getting notifications:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -53,15 +53,15 @@ export class NotificationsManager {
     }
 
     /**
-     * Отмечает несколько уведомлений как прочитанные.
+     * Marks several notifications as read.
      * POST /api/notifications/read-batch → { success: true, count: number }
      *
-     * @param {string[]} ids - Массив ID уведомлений
-     * @returns {Promise<Object|null>} { success: true, count } или null при ошибке
+     * @param {string[]} ids - Array of notification IDs
+     * @returns {Promise<Object|null>} { success: true, count } or null on error
      */
     async markAsReadBatch(ids) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         if (!Array.isArray(ids) || ids.length === 0) {
@@ -75,20 +75,20 @@ export class NotificationsManager {
             }
             return null;
         } catch (error) {
-            console.error('Исключение при отметке уведомлений:', error.message);
+            console.error('Exception marking notifications as read:', error.message);
             return null;
         }
     }
 
     /**
-     * Отмечает уведомление как прочитанное
-     * 
-     * @param {string} notificationId - ID уведомления
-     * @returns {Promise<Object|null>} { success: true } или null при ошибке
+     * Marks notification as read
+     *
+     * @param {string} notificationId - Notification ID
+     * @returns {Promise<Object|null>} { success: true } or null on error
      */
     async markAsRead(notificationId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -97,17 +97,16 @@ export class NotificationsManager {
             const response = await this.axios.post(readUrl);
 
             if (response.status === 200 || response.status === 204) {
-                // Структура ответа: { success: true }
                 return response.data || { success: true };
             } else {
-                console.error(`Ошибка отметки уведомления: ${response.status}`);
+                console.error(`Error marking notification: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при отметке уведомления:', error.message);
+            console.error('Exception marking notification as read:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -117,13 +116,13 @@ export class NotificationsManager {
     }
 
     /**
-     * Получает количество непрочитанных уведомлений
-     * 
-     * @returns {Promise<number|null>} Количество уведомлений или null при ошибке
+     * Gets unread notifications count
+     *
+     * @returns {Promise<number|null>} Count or null on error
      */
     async getUnreadCount() {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -133,14 +132,13 @@ export class NotificationsManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                // Структура: { count: number }
                 return data.count || 0;
             } else {
-                console.error(`Ошибка получения количества уведомлений: ${response.status}`);
+                console.error(`Error getting notification count: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении количества уведомлений:', error.message);
+            console.error('Exception getting notification count:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -150,14 +148,14 @@ export class NotificationsManager {
     }
 
     /**
-     * Отмечает все уведомления как прочитанные.
+     * Marks all notifications as read.
      * POST /api/notifications/read-all → { success: true }
      *
-     * @returns {Promise<boolean>} True если успешно
+     * @returns {Promise<boolean>} True on success
      */
     async markAllAsRead() {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
 
@@ -168,14 +166,14 @@ export class NotificationsManager {
             if (response.status === 200 || response.status === 204) {
                 return response.data?.success !== false;
             } else {
-                console.error(`Ошибка отметки всех уведомлений: ${response.status}`);
+                console.error(`Error marking all notifications: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return false;
             }
         } catch (error) {
-            console.error('Исключение при отметке всех уведомлений:', error.message);
+            console.error('Exception marking all notifications as read:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -183,25 +181,25 @@ export class NotificationsManager {
             return false;
         }
     }
-    
-    // ========== USER-FRIENDLY МЕТОДЫ ==========
-    
+
+    // ========== USER-FRIENDLY METHODS ==========
+
     /**
-     * Проверяет, есть ли непрочитанные уведомления (удобный метод)
-     * 
-     * @returns {Promise<boolean>} True если есть непрочитанные
+     * Checks if there are unread notifications
+     *
+     * @returns {Promise<boolean>} True if there are unread
      */
     async hasUnreadNotifications() {
         const count = await this.getUnreadCount();
         return (count || 0) > 0;
     }
-    
+
     /**
-     * Получает только непрочитанные уведомления (удобный метод)
+     * Gets only unread notifications
      *
-     * @param {number} limit - Количество уведомлений
-     * @param {number} offset - Смещение для пагинации
-     * @returns {Promise<Object|null>} { notifications: [], hasMore } или null
+     * @param {number} limit - Number of notifications
+     * @param {number} offset - Pagination offset
+     * @returns {Promise<Object|null>} { notifications: [], hasMore } or null
      */
     async getUnreadNotifications(limit = 20, offset = 0) {
         const all = await this.getNotifications(limit, offset);

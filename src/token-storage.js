@@ -1,64 +1,60 @@
 /**
- * Утилита для сохранения токена в .env файл
+ * Utility for saving token to .env file
  */
 import fs from 'fs';
 import path from 'path';
 
 /**
- * Обновляет ITD_ACCESS_TOKEN в .env файле
+ * Updates ITD_ACCESS_TOKEN in .env file
  *
- * @param {string} newToken - Новый access token
- * @param {string} [envPath] - Путь к .env (по умолчанию process.cwd() + '/.env')
- * @returns {Promise<boolean>} True если успешно
+ * @param {string} newToken - New access token
+ * @param {string} [envPath] - Path to .env (default process.cwd() + '/.env')
+ * @returns {Promise<boolean>} True on success
  */
 export async function saveAccessToken(newToken, envPath = null) {
     try {
         const targetPath = envPath ?? path.join(process.cwd(), '.env');
 
         if (!fs.existsSync(targetPath)) {
-            console.warn('⚠️  Файл .env не найден, токен не сохранен');
+            console.warn('⚠️  .env file not found, token not saved');
             return false;
         }
 
         let content = fs.readFileSync(targetPath, 'utf8');
-        
-        // Ищем строку с ITD_ACCESS_TOKEN
+
         const tokenRegex = /^ITD_ACCESS_TOKEN=.*$/m;
-        
+
         if (tokenRegex.test(content)) {
-            // Заменяем существующий токен
             content = content.replace(tokenRegex, `ITD_ACCESS_TOKEN=${newToken}`);
         } else {
-            // Добавляем новую строку, если токена нет
             content += `\nITD_ACCESS_TOKEN=${newToken}\n`;
         }
-        
+
         fs.writeFileSync(targetPath, content, 'utf8');
-        console.log('✅ Токен сохранен в .env');
+        console.log('✅ Token saved to .env');
         return true;
     } catch (error) {
-        console.error('❌ Ошибка сохранения токена в .env:', error.message);
+        console.error('❌ Error saving token to .env:', error.message);
         return false;
     }
 }
 
 /**
- * Сохраняет cookies в файл .cookies
+ * Saves cookies to .cookies file
  *
- * @param {string} newCookieHeader - Новый cookie header
- * @param {string} [cookiesPath] - Путь к .cookies (по умолчанию process.cwd() + '/.cookies')
- * @returns {Promise<boolean>} True если успешно
+ * @param {string} newCookieHeader - New cookie header
+ * @param {string} [cookiesPath] - Path to .cookies (default process.cwd() + '/.cookies')
+ * @returns {Promise<boolean>} True on success
  */
 export async function saveCookieHeader(newCookieHeader, cookiesPath = null) {
     try {
         const targetPath = cookiesPath ?? path.join(process.cwd(), '.cookies');
 
-        // Просто записываем cookies в файл (одна строка)
         fs.writeFileSync(targetPath, newCookieHeader, 'utf8');
-        console.log('✅ Cookies сохранены в .cookies');
+        console.log('✅ Cookies saved to .cookies');
         return true;
     } catch (error) {
-        console.error('❌ Ошибка сохранения cookies в .cookies:', error.message);
+        console.error('❌ Error saving cookies to .cookies:', error.message);
         return false;
     }
 }

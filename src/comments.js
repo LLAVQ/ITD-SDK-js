@@ -1,11 +1,11 @@
 /**
- * Модуль работы с комментариями
+ * Comments module
  */
 export class CommentsManager {
     /**
-     * Управление комментариями
-     * 
-     * @param {ITDClient} client - Главный клиент
+     * Comment management
+     *
+     * @param {ITDClient} client - Main client
      */
     constructor(client) {
         this.client = client;
@@ -13,19 +13,19 @@ export class CommentsManager {
     }
     
     /**
-     * Добавляет комментарий к посту.
+     * Adds comment to post.
      * POST /api/posts/{postId}/comments → { id, content, author, attachments, ... }
-     * Поддерживает текст, голосовые (attachmentIds с audio/ogg) и ответы (replyTo).
+     * Supports text, voice (attachmentIds with audio/ogg) and replies (replyTo).
      *
-     * @param {string} postId - ID поста
-     * @param {string} text - Текст комментария (пустая строка для голосового)
-     * @param {string|null} replyToCommentId - ID комментария для ответа (опционально)
-     * @param {string[]|null} attachmentIds - ID загруженных файлов (audio/ogg для голосовых)
-     * @returns {Promise<Object|null>} Данные созданного комментария или null
+     * @param {string} postId - Post ID
+     * @param {string} text - Comment text (empty string for voice)
+     * @param {string|null} replyToCommentId - Comment ID to reply to (optional)
+     * @param {string[]|null} attachmentIds - Uploaded file IDs (audio/ogg for voice)
+     * @returns {Promise<Object|null>} Created comment data or null
      */
     async addComment(postId, text, replyToCommentId = null, attachmentIds = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         try {
@@ -40,11 +40,11 @@ export class CommentsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             } else {
-                console.error(`Ошибка добавления комментария: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Add comment error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при добавлении комментария:', error.message);
+            console.error('Exception adding comment:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -54,17 +54,17 @@ export class CommentsManager {
     }
 
     /**
-     * Добавляет голосовое сообщение в комментарий.
-     * Загружает audio/ogg через /api/files/upload и создаёт комментарий с attachmentIds.
+     * Adds voice message as comment.
+     * Uploads audio/ogg via /api/files/upload and creates comment with attachmentIds.
      *
-     * @param {string} postId - ID поста
-     * @param {string} audioPath - Путь к аудиофайлу (audio/ogg)
-     * @param {string|null} replyToCommentId - ID комментария для ответа (опционально)
-     * @returns {Promise<Object|null>} Данные созданного комментария или null
+     * @param {string} postId - Post ID
+     * @param {string} audioPath - Path to audio file (audio/ogg)
+     * @param {string|null} replyToCommentId - Comment ID to reply to (optional)
+     * @returns {Promise<Object|null>} Created comment data or null
      */
     async addVoiceComment(postId, audioPath, replyToCommentId = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         const uploaded = await this.client.files.uploadFile(audioPath);
@@ -73,20 +73,20 @@ export class CommentsManager {
     }
 
     /**
-     * Ответ на комментарий (отдельный эндпоинт /api/comments/:id/replies).
+     * Reply to comment (separate endpoint /api/comments/:id/replies).
      *
-     * @param {string} commentId - ID комментария, на который отвечаем
-     * @param {string} content - Текст ответа
-     * @param {string} replyToUserId - ID пользователя-автора комментария (обязательно для API)
-     * @returns {Promise<Object|null>} Данные созданного комментария-ответа или null при ошибке
+     * @param {string} commentId - Comment ID to reply to
+     * @param {string} content - Reply text
+     * @param {string} replyToUserId - Comment author user ID (required by API)
+     * @returns {Promise<Object|null>} Created reply comment data or null on error
      */
     async replyToComment(commentId, content, replyToUserId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         if (!replyToUserId) {
-            console.error('Ошибка: replyToUserId обязателен для ответа на комментарий');
+            console.error('Error: replyToUserId is required for replying to comment');
             return null;
         }
         try {
@@ -98,10 +98,10 @@ export class CommentsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data;
             }
-            console.error(`Ошибка ответа на комментарий: ${response.status} - ${JSON.stringify(response.data)}`);
+            console.error(`Reply to comment error: ${response.status} - ${JSON.stringify(response.data)}`);
             return null;
         } catch (error) {
-            console.error('Исключение при ответе на комментарий:', error.message);
+            console.error('Exception replying to comment:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -111,13 +111,13 @@ export class CommentsManager {
     }
     
     /**
-     * Получает комментарии к посту.
-     * API ожидает sort: "newest" | "oldest" | "popular". SDK принимает "new"/"old"/"popular" и маппит в newest/oldest/popular.
+     * Gets comments for post.
+     * API expects sort: "newest" | "oldest" | "popular". SDK accepts "new"/"old"/"popular" and maps to newest/oldest/popular.
      *
-     * @param {string} postId - ID поста
-     * @param {number} limit - Количество комментариев (по умолчанию 20)
-     * @param {string} sort - Сортировка: "popular", "new", "old" (в API уходит как popular, newest, oldest)
-     * @returns {Promise<Object>} { comments: [], total, hasMore, nextCursor } или { comments: [] } при ошибке
+     * @param {string} postId - Post ID
+     * @param {number} limit - Number of comments (default 20)
+     * @param {string} sort - Sort: "popular", "new", "old" (sent to API as popular, newest, oldest)
+     * @returns {Promise<Object>} { comments: [], total, hasMore, nextCursor } or { comments: [] } on error
      */
     async getComments(postId, limit = 20, sort = 'popular') {
         const commentsUrl = `${this.client.baseUrl}/api/posts/${postId}/comments`;
@@ -159,9 +159,9 @@ export class CommentsManager {
                 if (fallback.status === 200) {
                     return parseResponse(fallback);
                 }
-                console.warn('⚠️  GET /api/posts/:postId/comments: 422. API ожидает sort: newest | oldest | popular.');
+                console.warn('⚠️  GET /api/posts/:postId/comments: 422. API expects sort: newest | oldest | popular.');
             }
-            console.error(`Ошибка получения комментариев: ${response.status}`);
+            console.error(`Get comments error: ${response.status}`);
             return { comments: [], total: 0, hasMore: false, nextCursor: null };
         } catch (error) {
             if (error.response?.status === 422) {
@@ -172,7 +172,7 @@ export class CommentsManager {
                     }
                 } catch (_) {}
             }
-            console.error('Исключение при получении комментариев:', error.message);
+            console.error('Exception getting comments:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -182,14 +182,14 @@ export class CommentsManager {
     }
     
     /**
-     * Ставит лайк на комментарий
-     * 
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<Object|null>} { liked: true, likesCount: number } или null при ошибке
+     * Likes comment
+     *
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<Object|null>} { liked: true, likesCount: number } or null on error
      */
     async likeComment(commentId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
@@ -200,11 +200,11 @@ export class CommentsManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data; // { liked: true, likesCount: number }
             } else {
-                console.error(`Ошибка лайка комментария: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`Like comment error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при лайке комментария:', error.message);
+            console.error('Exception liking comment:', error.message);
             if (error.response) {
                 console.error('Response:', error.response.status, error.response.data);
             }
@@ -213,14 +213,14 @@ export class CommentsManager {
     }
     
     /**
-     * Убирает лайк с комментария
-     * 
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<Object|null>} { liked: false, likesCount: number } или null при ошибке
+     * Unlikes comment
+     *
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<Object|null>} { liked: false, likesCount: number } or null on error
      */
     async unlikeComment(commentId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         
@@ -231,14 +231,14 @@ export class CommentsManager {
             if (response.status === 200 || response.status === 204) {
                 return response.data || { liked: false, likesCount: 0 };
             } else {
-                console.error(`Ошибка убирания лайка с комментария: ${response.status}`);
+                console.error(`Unlike comment error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при убирании лайка с комментария:', error.message);
+            console.error('Exception unliking comment:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -248,14 +248,14 @@ export class CommentsManager {
     }
     
     /**
-     * Удаляет комментарий
-     * 
-     * @param {number} commentId - ID комментария
-     * @returns {Promise<boolean>} True если успешно
+     * Deletes comment
+     *
+     * @param {number} commentId - Comment ID
+     * @returns {Promise<boolean>} True on success
      */
     async deleteComment(commentId) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return false;
         }
         
@@ -266,20 +266,20 @@ export class CommentsManager {
             if (response.status === 200 || response.status === 204) {
                 return true;
             } else {
-                console.error(`Ошибка удаления комментария: ${response.status}`);
+                console.error(`Delete comment error: ${response.status}`);
                 return false;
             }
         } catch (error) {
-            console.error('Исключение при удалении комментария:', error.message);
+            console.error('Exception deleting comment:', error.message);
             return false;
         }
     }
 
     /**
-     * Восстанавливает удалённый комментарий. POST /api/comments/{id}/restore
+     * Restores deleted comment. POST /api/comments/{id}/restore
      *
-     * @param {string} commentId - ID комментария
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} commentId - Comment ID
+     * @returns {Promise<boolean>} True on success
      */
     async restoreComment(commentId) {
         if (!await this.client.auth.checkAuth()) return false;
@@ -288,39 +288,39 @@ export class CommentsManager {
             const response = await this.axios.post(url);
             return response.status === 200 || response.status === 201 || response.status === 204;
         } catch (error) {
-            console.error('Исключение при восстановлении комментария:', error.message);
+            console.error('Exception restoring comment:', error.message);
             return false;
         }
     }
     
-    // ========== USER-FRIENDLY МЕТОДЫ ==========
-    
+// ========== USER-FRIENDLY METHODS ==========
+
     /**
-     * Получает количество комментариев поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<number>} Количество комментариев
+     * Gets post comment count
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<number>} Comment count
      */
     async getPostCommentsCount(postId) {
         const result = await this.getComments(postId, 1);
         if (result && result.total !== undefined) {
             return result.total;
         }
-        // Fallback: получаем через пост
+        // Fallback: get via post
         const post = await this.client.posts.getPost(postId);
         return post ? (post.commentsCount || 0) : 0;
     }
     
     /**
-     * Получает топ-комментарий поста (с наибольшим количеством лайков) (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<Object|null>} Топ-комментарий или null
+     * Gets top comment for post (most likes)
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<Object|null>} Top comment or null
      */
     async getTopComment(postId) {
         const result = await this.getComments(postId, 20, 'popular');
         if (result && result.comments && result.comments.length > 0) {
-            // Сортируем по лайкам и возвращаем первый
+            // Sort by likes and return first
             const sorted = [...result.comments].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
             return sorted[0];
         }
@@ -328,10 +328,10 @@ export class CommentsManager {
     }
     
     /**
-     * Проверяет, есть ли комментарии у поста (удобный метод)
-     * 
-     * @param {string} postId - ID поста
-     * @returns {Promise<boolean>} True если есть комментарии
+     * Checks if post has comments
+     *
+     * @param {string} postId - Post ID
+     * @returns {Promise<boolean>} True if has comments
      */
     async hasComments(postId) {
         const count = await this.getPostCommentsCount(postId);

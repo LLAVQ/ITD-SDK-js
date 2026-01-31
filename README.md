@@ -1,22 +1,22 @@
 # ITD-SDK-js
 
-Неофициальная библиотека на Node.js для работы с API сайта [итд.com](http://итд.com). Упрощает написание ботов и скриптов: берет на себя авторизацию, поддержку сессий и предоставляет готовые методы для основных действий.
+Unofficial Node.js library for working with the API of [итд.com](http://итд.com). Simplifies writing bots and scripts: handles authentication, session support, and provides ready-made methods for core actions.
 
-## Главное
+## Highlights
 
-- **Автоматический Refresh Token**: вам не нужно вручную обновлять `accessToken` в коде. SDK сам подхватит новый, если старый протух, используя данные из `.cookies`.
-- **34 готовых метода**: от получения статистики постов до проверки подписок и работы с кланами.
-- **Минимум зависимостей**: работает на `axios` и `dotenv`.
+- **Automatic Refresh Token**: you don't need to manually refresh `accessToken` in code. The SDK picks up the new token when the old one expires, using data from `.cookies`.
+- **34 ready-made methods**: from post statistics to subscription checks and clan operations.
+- **Minimal dependencies**: runs on `axios` and `dotenv`.
 
-## Установка
+## Installation
 
-### Через npm (рекомендуется)
+### Via npm (recommended)
 
 ```bash
 npm install itd-sdk-js
 ```
 
-### Из исходников
+### From source
 
 ```bash
 git clone https://github.com/FriceKa/ITD-SDK-js.git
@@ -24,17 +24,17 @@ cd ITD-SDK-js
 npm install
 ```
 
-## Настройка
+## Configuration
 
-1. Создайте `.env` в корне проекта на основе `.env.example` (или используйте переменные окружения).
-2. Токен: добавьте `ITD_ACCESS_TOKEN` в .env или положите `.cookies` с `refresh_token` — клиент сам подхватит токен из .env или получит через refresh.
-3. Для авто-обновления токена создайте файл `.cookies` с Cookie из браузера (обязательно должен быть `refresh_token`).
+1. Create `.env` in the project root from `.env.example` (or use environment variables).
+2. Token: add `ITD_ACCESS_TOKEN` to .env or place `.cookies` with `refresh_token` — the client will read the token from .env or obtain it via refresh.
+3. For automatic token refresh, create a `.cookies` file with cookies from the browser (must include `refresh_token`).
 
-SDK по умолчанию читает и пишет `.env` и `.cookies` в корне проекта (`process.cwd()`). При обновлении токена изменения сохраняются в ваш проект. При необходимости можно задать `projectRoot` или явные пути в конструкторе — см. [API_REFERENCE.md](API_REFERENCE.md).
+By default the SDK reads and writes `.env` and `.cookies` in the project root (`process.cwd()`). When the token is refreshed, changes are saved to your project. You can set `projectRoot` or explicit paths in the constructor if needed — see [API_REFERENCE.md](API_REFERENCE.md).
 
-## Примеры
+## Examples
 
-### Базовые запросы
+### Basic requests
 
 JavaScript
 
@@ -45,61 +45,61 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const client = new ITDClient();
-// Токен подхватывается из .env. Если только .cookies — await client.ensureAuthenticated();
+// Token is read from .env. If only .cookies — await client.ensureAuthenticated();
 
-// Получаем профиль и тренды
+// Get profile and trends
 const myProfile = await client.getMyProfile();
 const trending = await client.getTrendingPosts(10);
 
-console.log(`Авторизован как: ${myProfile.username}`);
+console.log(`Logged in as: ${myProfile.username}`);
 
 ```
 
-### Статистика и уведомления
+### Statistics and notifications
 
 JavaScript
 
 ```
-// Простая проверка непрочитанных
+// Simple unread check
 if (await client.hasUnreadNotifications()) {
     const list = await client.getUnreadNotifications(5);
     console.log(list.notifications);
 }
 
-// Статистика конкретного поста
-const stats = await client.getPostStats('uuid-поста');
-console.log(`${stats.likes} лайков, ${stats.views} просмотров`);
+// Post statistics
+const stats = await client.getPostStats('post-uuid');
+console.log(`${stats.likes} likes, ${stats.views} views`);
 
 ```
 
-## Что умеет SDK
+## What the SDK can do
 
-Весь список методов разбит по категориям в документации:
+The full method list is grouped by category in the docs:
 
-- **Посты**: тренды, поиск, создание, удаление, статистика.
-- **Пользователи**: профили, счетчики подписок, клановые эмодзи.
-- **Комментарии**: получение топов, ответы, проверка наличия.
-- **Уведомления**: фильтрация только непрочитанных, отметка о прочтении.
+- **Posts**: trends, search, create, delete, statistics.
+- **Users**: profiles, follower/following counts, clan emojis.
+- **Comments**: top comments, replies, existence checks.
+- **Notifications**: filter unread only, mark as read.
 
-Полное описание каждого метода — в **[API_REFERENCE.md](API_REFERENCE.md)**.
+Full description of each method is in **[API_REFERENCE.md](API_REFERENCE.md)**.
 
-## Пост на чужой стене (wall post)
+## Wall post (post on another user's wall)
 
 ```javascript
-// Пишем пост на стене другого пользователя (нужен wallRecipientId, SDK получит его сам)
-await client.createWallPost('ITD_API', 'Тестовый пост на чужой стене 🦫');
+// Post on another user's wall (wallRecipientId is resolved by the SDK)
+await client.createWallPost('ITD_API', 'Test post on someone else\'s wall 🦫');
 ```
 
-## Рекомендации при создании постов
+## Recommendations when creating posts
 
-- **createPost** и **createWallPost** при любой ошибке возвращают **`null`** — всегда проверяйте результат.
-- Для загрузки файла и создания поста используется таймаут **120 с** по умолчанию (`uploadTimeout` в опциях клиента), чтобы запрос не зависал при 504 или медленной сети.
-- При 5xx/429 или «API вернул null» рекомендуется повторять запрос в приложении (ретраи с задержкой). Подробнее — в [API_REFERENCE.md](API_REFERENCE.md).
+- **createPost** and **createWallPost** return **`null`** on any error — always check the result.
+- A **120 s** timeout is used by default for file upload and post creation (`uploadTimeout` in client options) so requests don’t hang on 504 or slow networks.
+- On 5xx/429 or “API returned null”, retry in your app (with backoff). See [API_REFERENCE.md](API_REFERENCE.md) for details.
 
-## Важно
+## Important
 
-Это неофициальный проект. Если разработчики сайта изменят структуру API или введут новую защиту, методы могут временно перестать работать. Используйте аккуратно и не спамьте запросами.
+This is an unofficial project. If the site’s developers change the API or add new protections, methods may temporarily stop working. Use responsibly and avoid request spam.
 
 ---
 
-**Документация:** [API_REFERENCE.md](API_REFERENCE.md) | **Примеры кода:** [examples/README.md](examples/README.md)
+**Documentation:** [API_REFERENCE.md](API_REFERENCE.md) | **Code examples:** [examples/README.md](examples/README.md)

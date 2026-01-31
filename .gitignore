@@ -9,7 +9,7 @@ yarn.lock
 # Environment variables
 .env
 .cookies
-# .npmrc - можно добавить в git (только scope mapping, без токена)
+# .npmrc - can be committed (scope mapping only, no token)
 
 # IDE
 .vscode/

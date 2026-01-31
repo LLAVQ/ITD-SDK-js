@@ -1,23 +1,23 @@
 /**
- * Модуль аутентификации
+ * Authentication module
  */
 import { saveAccessToken, saveCookieHeader } from './token-storage.js';
 
 export class AuthManager {
     /**
-     * Управление аутентификацией
-     * 
-     * @param {ITDClient} client - Главный клиент
+     * Authentication management
+     *
+     * @param {ITDClient} client - Main client
      */
     constructor(client) {
         this.client = client;
         this.axios = client.axios;
     }
-    
+
     /**
-     * Проверяет наличие refresh_token в cookies
-     * 
-     * @returns {boolean} True если refresh_token доступен
+     * Checks for refresh_token in cookies
+     *
+     * @returns {boolean} True if refresh_token is available
      */
     hasRefreshToken() {
         try {
@@ -27,28 +27,27 @@ export class AuthManager {
             return false;
         }
     }
-    
+
     /**
-     * Обновляет accessToken через /api/v1/auth/refresh
-     * ВАЖНО: обычно этот endpoint работает только при наличии refresh-cookie,
-     * который браузер/сервер поставил ранее.
+     * Refreshes accessToken via /api/v1/auth/refresh
+     * IMPORTANT: this endpoint usually works only when refresh-cookie is present,
+     * which was set earlier by browser/server.
      *
-     * @returns {Promise<string|null>} accessToken или null
+     * @returns {Promise<string|null>} accessToken or null
      */
     async refreshAccessToken() {
-        // Проверяем наличие refresh_token перед попыткой обновления
         if (!this.hasRefreshToken()) {
-            console.error('❌ Не удалось обновить токен: refresh_token не найден в cookies');
-            console.error('💡 Решение:');
-            console.error('   1. Откройте итд.com в браузере и войдите в аккаунт');
-            console.error('   2. Откройте DevTools (F12) → Network');
-            console.error('   3. Найдите любой запрос к итд.com');
-            console.error('   4. Скопируйте значение заголовка Cookie');
-            console.error('   5. Вставьте в файл .cookies в корне проекта');
-            console.error('   6. Убедитесь, что в Cookie есть refresh_token');
+            console.error('❌ Failed to refresh token: refresh_token not found in cookies');
+            console.error('💡 Solution:');
+            console.error('   1. Open итд.com in the browser and log in');
+            console.error('   2. Open DevTools (F12) → Network');
+            console.error('   3. Find any request to итд.com');
+            console.error('   4. Copy the Cookie header value');
+            console.error('   5. Paste into .cookies file in project root');
+            console.error('   6. Ensure Cookie contains refresh_token');
             return null;
         }
-        
+
         try {
             const refreshUrl = `${this.client.baseUrl}/api/v1/auth/refresh`;
 
@@ -61,32 +60,26 @@ export class AuthManager {
 
             if (response.status === 200 && response.data?.accessToken) {
                 const newToken = response.data.accessToken;
-                
-                // Обновляем токен в клиенте
+
                 this.client.setAccessToken(newToken);
-                
-                // Сохраняем токен в .env файл (в корне проекта)
+
                 await saveAccessToken(newToken, this.client.envPath);
-                
-                // Обновляем cookies, если они пришли в ответе
+
                 if (response.headers['set-cookie']) {
                     const cookies = response.headers['set-cookie'];
-                    // Обновляем CookieJar с новыми cookies
                     for (const cookieString of cookies) {
                         try {
                             this.client.cookieJar.setCookieSync(cookieString, this.client.baseUrl);
                         } catch (e) {
-                            // Игнорируем ошибки парсинга отдельных cookies
+                            // Ignore individual cookie parse errors
                         }
                     }
-                    
-                    // Получаем все cookies из jar и обновляем .cookies файл
+
                     try {
                         const allCookies = await this.client.cookieJar.getCookiesSync(this.client.baseUrl);
-                        // Сохраняем только важные cookies (refresh_token и другие auth cookies)
-                        const importantCookies = allCookies.filter(c => 
-                            c.key === 'refresh_token' || 
-                            c.key.startsWith('__ddg') || 
+                        const importantCookies = allCookies.filter(c =>
+                            c.key === 'refresh_token' ||
+                            c.key.startsWith('__ddg') ||
                             c.key === 'is_auth'
                         );
                         if (importantCookies.length > 0) {
@@ -94,10 +87,10 @@ export class AuthManager {
                             await saveCookieHeader(cookieHeader, this.client.cookiesPath);
                         }
                     } catch (e) {
-                        console.warn('⚠️  Не удалось сохранить обновленные cookies:', e.message);
+                        console.warn('⚠️  Failed to save updated cookies:', e.message);
                     }
                 }
-                
+
                 return newToken;
             }
 
@@ -106,8 +99,8 @@ export class AuthManager {
             if (error.response) {
                 const errorData = error.response.data;
                 if (errorData?.error?.code === 'REFRESH_TOKEN_MISSING') {
-                    console.error('❌ Не удалось обновить токен: refresh_token не найден');
-                    console.error('💡 Решение: обновите файл .cookies из браузера (см. инструкцию выше)');
+                    console.error('❌ Failed to refresh token: refresh_token not found');
+                    console.error('💡 Solution: update .cookies from browser (see instructions above)');
                 } else {
                     console.error('refreshAccessToken failed:', error.response.status, error.response.data);
                 }
@@ -117,22 +110,22 @@ export class AuthManager {
             return null;
         }
     }
-    
+
     /**
-     * Смена пароля. POST /api/v1/auth/change-password
-     * Требует cookies (refresh_token).
+     * Change password. POST /api/v1/auth/change-password
+     * Requires cookies (refresh_token).
      *
-     * @param {string} oldPassword - Текущий пароль
-     * @param {string} newPassword - Новый пароль
-     * @returns {Promise<Object|null>} Ответ API или null при ошибке
+     * @param {string} oldPassword - Current password
+     * @param {string} newPassword - New password
+     * @returns {Promise<Object|null>} API response or null on error
      */
     async changePassword(oldPassword, newPassword) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходим accessToken');
+            console.error('Error: accessToken required');
             return null;
         }
         if (!this.hasRefreshToken()) {
-            console.error('Ошибка: необходим refresh_token в cookies');
+            console.error('Error: refresh_token required in cookies');
             return null;
         }
         try {
@@ -146,7 +139,7 @@ export class AuthManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка смены пароля:', error.message);
+            console.error('Error changing password:', error.message);
             if (error.response) {
                 console.error('Response:', error.response.status, error.response.data);
             }
@@ -155,10 +148,10 @@ export class AuthManager {
     }
 
     /**
-     * Выход из аккаунта.
+     * Logout.
      * POST /api/v1/auth/logout → 204
      *
-     * @returns {Promise<boolean>} True если успешно
+     * @returns {Promise<boolean>} True on success
      */
     async logout() {
         try {
@@ -170,55 +163,51 @@ export class AuthManager {
                 try {
                     this.client.cookieJar.removeAllCookiesSync();
                 } catch (e) {
-                    // MemoryCookieStore поддерживает removeAllCookiesSync
+                    // MemoryCookieStore supports removeAllCookiesSync
                 }
                 return true;
             }
             return false;
         } catch (error) {
-            console.error('Ошибка выхода:', error.message);
+            console.error('Logout error:', error.message);
             return false;
         }
     }
-    
+
     /**
-     * Проверяет, авторизован ли пользователь
-     * 
-     * @returns {Promise<boolean>} True если авторизован
+     * Checks if user is authenticated
+     *
+     * @returns {Promise<boolean>} True if authenticated
      */
     async checkAuth() {
-        // Авторизован, если есть accessToken (реальная проверка — 401 при истечении)
         return !!this.client.accessToken;
     }
-    
+
     /**
-     * Проверяет валидность токена, делая тестовый запрос
-     * Если токен истек и есть refresh_token, автоматически обновляет его
-     * 
-     * @returns {Promise<boolean>} True если токен валиден или успешно обновлен
+     * Validates token with a test request.
+     * If token expired and refresh_token exists, refreshes automatically.
+     *
+     * @returns {Promise<boolean>} True if token valid or successfully refreshed
      */
     async validateAndRefreshToken() {
         if (!this.client.accessToken) {
             return false;
         }
-        
+
         try {
-            // Делаем легкий запрос для проверки токена
             const profileUrl = `${this.client.baseUrl}/api/users/me`;
             const response = await this.client.axios.get(profileUrl);
-            
+
             if (response.status === 200) {
-                return true; // Токен валиден
+                return true;
             }
-            
+
             return false;
         } catch (error) {
-            // Если получили 401, пытаемся обновить токен
             if (error.response?.status === 401) {
                 const newToken = await this.refreshAccessToken();
                 return !!newToken;
             }
-            
             return false;
         }
     }

@@ -1,70 +1,70 @@
-# 📚 Примеры использования
+# 📚 Usage examples
 
-Примеры, демонстрирующие возможности и преимущества SDK.
+Examples demonstrating SDK capabilities and usage.
 
-## 🚀 Быстрый старт
+## 🚀 Quick start
 
-**Для новичков:** Запустите `quick-start.js` - он содержит подробные комментарии и пошаговые объяснения.
+**For beginners:** Run `quick-start.js` — it has detailed comments and step-by-step explanations.
 
 ```bash
 node examples/quick-start.js
 ```
 
-## 📝 Основные примеры
+## 📝 Main examples
 
-### 1. `basic-usage.js` - Базовое использование
+### 1. `basic-usage.js` — Basic usage
 
-Показывает простоту работы с API через удобные методы.
+Shows how simple it is to work with the API via convenient methods.
 
 ```bash
 node examples/basic-usage.js
 ```
 
-**Что демонстрирует:**
-- Получение профиля
-- Работа с постами
-- Использование удобных методов
+**What it demonstrates:**
+- Getting your profile
+- Working with posts
+- Using convenience methods
 
-### 2. `user-friendly.js` - Удобные методы
+### 2. `user-friendly.js` — Convenience methods
 
-Демонстрирует преимущества user-friendly методов SDK.
+Demonstrates the benefits of the SDK’s user-friendly methods.
 
 ```bash
 node examples/user-friendly.js
 ```
 
-**Что демонстрирует:**
-- Проверка подписки одной строкой
-- Получение статистики поста
-- Работа с уведомлениями
-- Получение клана пользователя
+**What it demonstrates:**
+- One-line subscription check
+- Post statistics
+- Notifications
+- User clan
 
-### 3. `auto-refresh.js` - Автоматическое обновление токена
+### 3. `auto-refresh.js` — Automatic token refresh
 
-Показывает, как SDK автоматически обновляет токен при истечении.
+Shows how the SDK automatically refreshes the token when it expires.
 
 ```bash
 node examples/auto-refresh.js
 ```
 
-**Что демонстрирует:**
-- Автоматическое обновление токена
-- Прозрачная работа с API
-- Обработка ошибок
+**What it demonstrates:**
+- Automatic token refresh
+- Transparent API usage
+- Error handling
 
-## 📖 Полная документация
+## 📖 Full documentation
 
-Для полной документации всех методов см. **[API_REFERENCE.md](../API_REFERENCE.md)**
+For full documentation of all methods see **[API_REFERENCE.md](../API_REFERENCE.md)**
 
-## ⚙️ Настройка перед запуском
+## ⚙️ Setup before running
 
-### Установка через npm (рекомендуется)
+### Install via npm (recommended)
 
 ```bash
 npm install itd-sdk-js
 ```
 
-### Установка из исходников
+### Install from source
 
 ```bash
 git clone https://github.com/FriceKa/ITD-SDK-js.git
@@ -72,9 +72,9 @@ cd ITD-SDK-js
 npm install
 ```
 
-### Конфигурация
+### Configuration
 
-1. Скопируйте `.env.example` в `.env` и заполните `ITD_ACCESS_TOKEN`
-2. Создайте файл `.cookies` и вставьте туда cookies из браузера
+1. Copy `.env.example` to `.env` and set `ITD_ACCESS_TOKEN`
+2. Create a `.cookies` file and paste browser cookies into it
 
-Подробнее см. **[README.md](../README.md)**
+See **[README.md](../README.md)** for details.

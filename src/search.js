@@ -1,5 +1,5 @@
 /**
- * Менеджер для работы с поиском
+ * Search manager
  */
 export class SearchManager {
     constructor(client) {
@@ -8,12 +8,12 @@ export class SearchManager {
     }
 
     /**
-     * Выполняет поиск пользователей и хэштегов
-     * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} userLimit - Максимальное количество пользователей (по умолчанию 5)
-     * @param {number} hashtagLimit - Максимальное количество хэштегов (по умолчанию 5)
-     * @returns {Promise<Object|null>} { users: [], hashtags: [] } или null при ошибке
+     * Searches users and hashtags
+     *
+     * @param {string} query - Search query
+     * @param {number} userLimit - Max number of users (default 5)
+     * @param {number} hashtagLimit - Max number of hashtags (default 5)
+     * @returns {Promise<Object|null>} { users: [], hashtags: [] } or null on error
      */
     async search(query, userLimit = 5, hashtagLimit = 5) {
         try {
@@ -28,30 +28,28 @@ export class SearchManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                
-                // Структура ответа: { data: { users: [], hashtags: [] } }
+
                 if (data.data) {
                     return {
                         users: data.data.users || [],
                         hashtags: data.data.hashtags || []
                     };
                 }
-                
-                // Fallback
+
                 if (data.users || data.hashtags) {
                     return {
                         users: data.users || [],
                         hashtags: data.hashtags || []
                     };
                 }
-                
+
                 return { users: [], hashtags: [] };
             } else {
-                console.error(`Ошибка поиска: ${response.status}`);
+                console.error(`Search error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при поиске:', error.message);
+            console.error('Exception during search:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -61,11 +59,11 @@ export class SearchManager {
     }
 
     /**
-     * Ищет пользователей
-     * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} limit - Максимальное количество пользователей (по умолчанию 5)
-     * @returns {Promise<Array|null>} Массив пользователей или null при ошибке
+     * Searches users
+     *
+     * @param {string} query - Search query
+     * @param {number} limit - Max number of users (default 5)
+     * @returns {Promise<Array|null>} Array of users or null on error
      */
     async searchUsers(query, limit = 5) {
         const result = await this.search(query, limit, 0);
@@ -73,11 +71,11 @@ export class SearchManager {
     }
 
     /**
-     * Ищет хэштеги
-     * 
-     * @param {string} query - Поисковый запрос
-     * @param {number} limit - Максимальное количество хэштегов (по умолчанию 5)
-     * @returns {Promise<Array|null>} Массив хэштегов или null при ошибке
+     * Searches hashtags
+     *
+     * @param {string} query - Search query
+     * @param {number} limit - Max number of hashtags (default 5)
+     * @returns {Promise<Array|null>} Array of hashtags or null on error
      */
     async searchHashtags(query, limit = 5) {
         const result = await this.search(query, 0, limit);

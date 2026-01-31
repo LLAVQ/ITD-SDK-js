@@ -1,8 +1,8 @@
 /**
- * Пример работы с токенами при множественных запросах
- * 
- * Демонстрирует правильную обработку истечения токена
- * при публикации нескольких постов с интервалами
+ * Token handling with multiple requests
+ *
+ * Demonstrates proper handling of token expiration
+ * when publishing several posts with delays between them
  */
 
 import { ITDClient } from '../src/client.js';
@@ -12,73 +12,71 @@ dotenv.config();
 
 async function publishMultiplePosts() {
     const client = new ITDClient();
-    
-    console.log('📝 Публикация нескольких постов с проверкой токена\n');
-    
-    // Проверяем наличие refresh_token
+
+    console.log('📝 Publishing multiple posts with token check\n');
+
+    // Check for refresh_token
     if (!client.hasRefreshToken()) {
-        console.error('❌ ВНИМАНИЕ: refresh_token не найден в cookies!');
-        console.error('💡 Решение:');
-        console.error('   1. Откройте итд.com в браузере и войдите');
-        console.error('   2. Откройте DevTools (F12) → Network');
-        console.error('   3. Найдите любой запрос к итд.com');
-        console.error('   4. Скопируйте значение заголовка Cookie');
-        console.error('   5. Вставьте в файл .cookies в корне проекта');
-        console.error('   6. Убедитесь, что в Cookie есть refresh_token\n');
-        console.error('⚠️  Без refresh_token токен не будет обновляться автоматически!\n');
+        console.error('❌ WARNING: refresh_token not found in cookies!');
+        console.error('💡 Solution:');
+        console.error('   1. Open итд.com in the browser and log in');
+        console.error('   2. Open DevTools (F12) → Network');
+        console.error('   3. Find any request to итд.com');
+        console.error('   4. Copy the Cookie header value');
+        console.error('   5. Paste into .cookies in the project root');
+        console.error('   6. Ensure Cookie contains refresh_token\n');
+        console.error('⚠️  Without refresh_token the token will not refresh automatically!\n');
     } else {
-        console.log('✅ Refresh token найден - токен будет обновляться автоматически\n');
+        console.log('✅ Refresh token found — token will refresh automatically\n');
     }
-    
+
     const posts = [
-        { text: 'Первый пост', image: 'image1.jpg' },
-        { text: 'Второй пост', image: 'image2.jpg' },
-        { text: 'Третий пост', image: 'image3.jpg' }
+        { text: 'First post', image: 'image1.jpg' },
+        { text: 'Second post', image: 'image2.jpg' },
+        { text: 'Third post', image: 'image3.jpg' }
     ];
-    
+
     for (let i = 0; i < posts.length; i++) {
         const post = posts[i];
-        console.log(`📝 Публикация поста ${i + 1}/${posts.length}...`);
-        
+        console.log(`📝 Publishing post ${i + 1}/${posts.length}...`);
+
         try {
-            // ВАЖНО: Проверяем и обновляем токен перед каждым запросом
-            // Это особенно важно при больших интервалах между запросами
+            // IMPORTANT: Validate and refresh token before each request
+            // Especially important when there are long gaps between requests
             const tokenValid = await client.validateAndRefreshToken();
-            
+
             if (!tokenValid) {
-                console.error(`❌ Токен невалиден и не удалось обновить`);
-                console.error(`   Пропускаю пост: ${post.text}`);
+                console.error(`❌ Token invalid and refresh failed`);
+                console.error(`   Skipping post: ${post.text}`);
                 continue;
             }
-            
-            // Публикуем пост
+
             const result = await client.createPost(post.text, post.image);
-            
+
             if (result) {
-                console.log(`✅ Пост ${i + 1} опубликован: ${result.id}\n`);
+                console.log(`✅ Post ${i + 1} published: ${result.id}\n`);
             } else {
-                console.error(`❌ Не удалось опубликовать пост ${i + 1}\n`);
+                console.error(`❌ Failed to publish post ${i + 1}\n`);
             }
-            
+
         } catch (error) {
-            console.error(`❌ Ошибка при публикации поста ${i + 1}: ${error.message}\n`);
+            console.error(`❌ Error publishing post ${i + 1}: ${error.message}\n`);
         }
-        
-        // Имитация интервала между постами
+
         if (i < posts.length - 1) {
-            console.log('⏳ Ожидание перед следующим постом...\n');
+            console.log('⏳ Waiting before next post...\n');
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
-    
-    console.log('✅ Все посты обработаны');
+
+    console.log('✅ All posts processed');
 }
 
 async function main() {
     try {
         await publishMultiplePosts();
     } catch (error) {
-        console.error('❌ Критическая ошибка:', error.message);
+        console.error('❌ Critical error:', error.message);
         process.exit(1);
     }
 }

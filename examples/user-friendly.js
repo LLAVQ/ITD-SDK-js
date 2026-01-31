@@ -1,8 +1,8 @@
 /**
- * ✨ Пример 2: Удобные методы (User-Friendly)
- * 
- * Демонстрирует преимущества удобных методов SDK.
- * Показывает, как просто работать с данными без сложных запросов.
+ * ✨ Example 2: User-friendly methods
+ *
+ * Demonstrates the benefits of the SDK's convenience methods.
+ * Shows how easy it is to work with data without complex requests.
  */
 
 import { ITDClient } from 'itd-sdk-js';
@@ -11,66 +11,66 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function main() {
-    console.log('✨ === Удобные методы SDK ===\n');
+    console.log('✨ === User-friendly SDK methods ===\n');
 
     const client = new ITDClient();
 
     try {
-        // Пример 1: Проверка подписки - одна строка вместо сложного запроса
-        console.log('1️⃣  Проверка подписки:');
+        // Example 1: Subscription check — one line instead of a full request
+        console.log('1️⃣  Subscription check:');
         const username = 'BobrishYa';
         const isFollowing = await client.isFollowing(username);
-        console.log(`   Подписан на ${username}: ${isFollowing ? '✅ Да' : '❌ Нет'}`);
+        console.log(`   Following ${username}: ${isFollowing ? '✅ Yes' : '❌ No'}`);
         console.log();
 
-        // Пример 2: Получение статистики поста - просто и понятно
-        console.log('2️⃣  Статистика поста:');
-        const postId = '936bd898-f1f4-4fcd-a498-f3a7ee8e67bb'; // Замените на реальный ID
+        // Example 2: Post statistics — simple and clear
+        console.log('2️⃣  Post statistics:');
+        const postId = '936bd898-f1f4-4fcd-a498-f3a7ee8e67bb'; // Replace with real ID
         const stats = await client.getPostStats(postId);
         if (stats) {
-            console.log(`   Лайков: ${stats.likes}`);
-            console.log(`   Просмотров: ${stats.views}`);
-            console.log(`   Комментариев: ${stats.comments}`);
-            console.log(`   Репостов: ${stats.reposts}`);
+            console.log(`   Likes: ${stats.likes}`);
+            console.log(`   Views: ${stats.views}`);
+            console.log(`   Comments: ${stats.comments}`);
+            console.log(`   Reposts: ${stats.reposts}`);
         } else {
-            console.log('   Пост не найден');
+            console.log('   Post not found');
         }
         console.log();
 
-        // Пример 3: Проверка уведомлений - удобно и быстро
-        console.log('3️⃣  Проверка уведомлений:');
+        // Example 3: Notifications check — quick and easy
+        console.log('3️⃣  Notifications check:');
         const hasUnread = await client.hasUnreadNotifications();
         if (hasUnread) {
             const unread = await client.getUnreadNotifications(5);
-            console.log(`   Непрочитанных: ${unread.notifications.length}`);
+            console.log(`   Unread: ${unread.notifications.length}`);
             unread.notifications.forEach((notif, i) => {
                 console.log(`   ${i + 1}. ${notif.type} - ${notif.read ? '✅' : '🔔'}`);
             });
         } else {
-            console.log('   Нет непрочитанных уведомлений');
+            console.log('   No unread notifications');
         }
         console.log();
 
-        // Пример 4: Получение клана пользователя - просто
-        console.log('4️⃣  Клан пользователя:');
+        // Example 4: User clan — simple
+        console.log('4️⃣  User clan:');
         const myClan = await client.getMyClan();
         const userClan = await client.getUserClan(username);
-        console.log(`   Мой клан: ${myClan}`);
-        console.log(`   Клан ${username}: ${userClan}`);
+        console.log(`   My clan: ${myClan}`);
+        console.log(`   ${username} clan: ${userClan}`);
         console.log();
 
-        // Пример 5: Получение последнего поста - удобно
-        console.log('5️⃣  Последний пост пользователя:');
+        // Example 5: Latest post — convenient
+        console.log('5️⃣  User latest post:');
         const latestPost = await client.getUserLatestPost(username);
         if (latestPost) {
-            console.log(`   Последний пост: ${latestPost.content?.substring(0, 60)}...`);
-            console.log(`   Лайков: ${latestPost.likesCount}, Просмотров: ${latestPost.viewsCount}`);
+            console.log(`   Latest post: ${latestPost.content?.substring(0, 60)}...`);
+            console.log(`   Likes: ${latestPost.likesCount}, Views: ${latestPost.viewsCount}`);
         } else {
-            console.log('   Постов не найдено');
+            console.log('   No posts found');
         }
 
     } catch (error) {
-        console.error('❌ Ошибка:', error.message);
+        console.error('❌ Error:', error.message);
     }
 }
 

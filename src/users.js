@@ -1,5 +1,5 @@
 /**
- * Модуль для работы с пользователями
+ * Users module
  */
 export class UsersManager {
     constructor(client) {
@@ -8,18 +8,18 @@ export class UsersManager {
     }
 
     /**
-     * Обновляет профиль текущего пользователя.
+     * Updates current user profile.
      * PUT /api/users/me → { id, username, displayName, bio, updatedAt }
      *
-     * @param {string|null} bio - Новое описание профиля (опционально)
-     * @param {string|null} displayName - Новое отображаемое имя (опционально)
-     * @param {string|null} username - Новый username (опционально)
-     * @param {string|null} bannerId - ID загруженного баннера (опционально)
-     * @returns {Promise<Object|null>} Обновленные данные профиля или null при ошибке
+     * @param {string|null} bio - New profile description (optional)
+     * @param {string|null} displayName - New display name (optional)
+     * @param {string|null} username - New username (optional)
+     * @param {string|null} bannerId - Uploaded banner ID (optional)
+     * @returns {Promise<Object|null>} Updated profile data or null on error
      */
     async updateProfile(bio = null, displayName = null, username = null, bannerId = null) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -39,14 +39,14 @@ export class UsersManager {
             if (response.status === 200) {
                 return response.data?.data ?? response.data;
             } else {
-                console.error(`Ошибка обновления профиля: ${response.status}`);
+                console.error(`Profile update error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при обновлении профиля:', error.message);
+            console.error('Exception updating profile:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -56,13 +56,13 @@ export class UsersManager {
     }
 
     /**
-     * Получает данные текущего пользователя
+     * Gets current user data
      * 
-     * @returns {Promise<Object|null>} Данные профиля или null при ошибке
+     * @returns {Promise<Object|null>} Profile data or null on error
      */
     async getMyProfile() {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -73,14 +73,14 @@ export class UsersManager {
             if (response.status === 200) {
                 return response.data;
             } else {
-                console.error(`Ошибка получения профиля: ${response.status}`);
+                console.error(`Profile fetch error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении профиля:', error.message);
+            console.error('Exception getting profile:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -90,14 +90,14 @@ export class UsersManager {
     }
 
     /**
-     * Получает настройки приватности текущего пользователя.
+     * Gets current user privacy settings.
      * GET /api/users/me/privacy → { isPrivate, wallClosed }
      *
-     * @returns {Promise<Object|null>} { isPrivate, wallClosed } или null при ошибке
+     * @returns {Promise<Object|null>} { isPrivate, wallClosed } or null on error
      */
     async getPrivacy() {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         try {
@@ -108,21 +108,21 @@ export class UsersManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка получения приватности:', error.message);
+            console.error('Privacy fetch error:', error.message);
             return null;
         }
     }
 
     /**
-     * Обновляет настройки приватности.
+     * Updates privacy settings.
      * PUT /api/users/me/privacy → { isPrivate, wallClosed }
      *
      * @param {Object} options - { isPrivate?: boolean, wallClosed?: boolean }
-     * @returns {Promise<Object|null>} { isPrivate, wallClosed } или null при ошибке
+     * @returns {Promise<Object|null>} { isPrivate, wallClosed } or null on error
      */
     async updatePrivacy(options = {}) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
         try {
@@ -138,18 +138,18 @@ export class UsersManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка обновления приватности:', error.message);
+            console.error('Privacy update error:', error.message);
             return null;
         }
     }
 
     /**
-     * Получает профиль пользователя по username
+     * Gets user profile by username
+     *
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} Profile data or null on error
      * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} Данные профиля или null при ошибке
-     * 
-     * Примечание: Авторизация не требуется для просмотра публичных профилей
+     * Note: Auth not required for public profiles
      */
     async getUserProfile(username) {
         try {
@@ -157,17 +157,17 @@ export class UsersManager {
             const response = await this.axios.get(profileUrl);
 
             if (response.status === 200) {
-                // Структура может быть { data: {...} } или просто {...}
+                // Response may be { data: {...} } or just {...}
                 return response.data.data || response.data;
             } else {
-                console.error(`Ошибка получения профиля пользователя: ${response.status}`);
+                console.error(`User profile fetch error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении профиля пользователя:', error.message);
+            console.error('Exception getting user profile:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -177,14 +177,14 @@ export class UsersManager {
     }
 
     /**
-     * Подписывается на пользователя
-     * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} { following: true, followersCount: number } или null при ошибке
+     * Follows user
+     *
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} { following: true, followersCount: number } or null on error
      */
     async followUser(username) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -195,14 +195,14 @@ export class UsersManager {
             if (response.status === 200 || response.status === 201) {
                 return response.data; // { following: true, followersCount: number }
             } else {
-                console.error(`Ошибка подписки: ${response.status}`);
+                console.error(`Follow error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при подписке:', error.message);
+            console.error('Exception following:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -212,14 +212,14 @@ export class UsersManager {
     }
 
     /**
-     * Отписывается от пользователя
-     * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<Object|null>} { following: false, followersCount: number } или null при ошибке
+     * Unfollows user
+     *
+     * @param {string} username - Username
+     * @returns {Promise<Object|null>} { following: false, followersCount: number } or null on error
      */
     async unfollowUser(username) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -230,14 +230,14 @@ export class UsersManager {
             if (response.status === 200 || response.status === 204) {
                 return response.data || { following: false, followersCount: 0 };
             } else {
-                console.error(`Ошибка отписки: ${response.status}`);
+                console.error(`Unfollow error: ${response.status}`);
                 if (response.data) {
                     console.error('Response data:', response.data);
                 }
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при отписке:', error.message);
+            console.error('Exception unfollowing:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -247,14 +247,14 @@ export class UsersManager {
     }
 
     /**
-     * Получает список подписчиков пользователя
-     * 
-     * @param {string} username - Имя пользователя
-     * @param {number} page - Номер страницы (начиная с 1)
-     * @param {number} limit - Количество на странице
-     * @returns {Promise<Object|null>} { users: [], pagination: {} } или null при ошибке
-     * 
-     * Примечание: Авторизация не требуется для просмотра подписчиков
+     * Gets user's followers list
+     *
+     * @param {string} username - Username
+     * @param {number} page - Page number (starting from 1)
+     * @param {number} limit - Items per page
+     * @returns {Promise<Object|null>} { users: [], pagination: {} } or null on error
+     *
+     * Note: Auth not required to view followers
      */
     async getFollowers(username, page = 1, limit = 30) {
         try {
@@ -264,7 +264,7 @@ export class UsersManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                // Структура: { data: { users: [...], pagination: {...} } }
+                // Response: { data: { users: [...], pagination: {...} } }
                 if (data.data && data.data.users) {
                     return {
                         users: data.data.users,
@@ -278,11 +278,11 @@ export class UsersManager {
                 }
                 return { users: [], pagination: {} };
             } else {
-                console.error(`Ошибка получения подписчиков: ${response.status}`);
+                console.error(`Followers fetch error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении подписчиков:', error.message);
+            console.error('Exception getting followers:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -292,14 +292,14 @@ export class UsersManager {
     }
 
     /**
-     * Получает список подписок пользователя
-     * 
-     * @param {string} username - Имя пользователя
-     * @param {number} page - Номер страницы (начиная с 1)
-     * @param {number} limit - Количество на странице
-     * @returns {Promise<Object|null>} { users: [], pagination: {} } или null при ошибке
-     * 
-     * Примечание: Авторизация не требуется для просмотра подписок
+     * Gets user's following list
+     *
+     * @param {string} username - Username
+     * @param {number} page - Page number (starting from 1)
+     * @param {number} limit - Items per page
+     * @returns {Promise<Object|null>} { users: [], pagination: {} } or null on error
+     *
+     * Note: Auth not required to view following
      */
     async getFollowing(username, page = 1, limit = 30) {
         try {
@@ -309,7 +309,7 @@ export class UsersManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                // Структура: { data: { users: [...], pagination: {...} } }
+                // Response: { data: { users: [...], pagination: {...} } }
                 if (data.data && data.data.users) {
                     return {
                         users: data.data.users,
@@ -323,11 +323,11 @@ export class UsersManager {
                 }
                 return { users: [], pagination: {} };
             } else {
-                console.error(`Ошибка получения подписок: ${response.status}`);
+                console.error(`Following fetch error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении подписок:', error.message);
+            console.error('Exception getting following:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -337,25 +337,25 @@ export class UsersManager {
     }
 
     /**
-     * Получает клан пользователя (эмодзи из avatar)
-     * 
-     * @param {string} username - Имя пользователя
-     * @returns {Promise<string|null>} Эмодзи клана или null при ошибке
+     * Gets user's clan (emoji from avatar)
+     *
+     * @param {string} username - Username
+     * @returns {Promise<string|null>} Clan emoji or null on error
      */
     async getUserClan(username) {
         const profile = await this.getUserProfile(username);
         if (!profile) {
             return null;
         }
-        // Клан - это эмодзи в поле avatar
+        // Clan is emoji in avatar field
         return profile.avatar || null;
     }
 
     /**
-     * Получает топ кланов по количеству участников.
-     * Возвращает массив (Array), не объект с полем clans.
+     * Gets top clans by member count.
+     * Returns array (Array), not object with clans field.
      *
-     * @returns {Promise<Array|null>} Массив кланов [{ avatar, memberCount }, ...] или null при ошибке
+     * @returns {Promise<Array|null>} Array of clans [{ avatar, memberCount }, ...] or null on error
      */
     async getTopClans() {
         try {
@@ -366,11 +366,11 @@ export class UsersManager {
                 const data = response.data?.data ?? response.data;
                 return data?.clans || [];
             } else {
-                console.error(`Ошибка получения топ кланов: ${response.status}`);
+                console.error(`Top clans fetch error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении топ кланов:', error.message);
+            console.error('Exception getting top clans:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -380,13 +380,13 @@ export class UsersManager {
     }
 
     /**
-     * Получает рекомендации кого подписаться
-     * 
-     * @returns {Promise<Array|null>} Массив пользователей или null при ошибке
+     * Gets who-to-follow suggestions
+     *
+     * @returns {Promise<Array|null>} Array of users or null on error
      */
     async getWhoToFollow() {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
@@ -396,14 +396,14 @@ export class UsersManager {
 
             if (response.status === 200) {
                 const data = response.data;
-                // Структура: { users: [...] }
+                // Response: { users: [...] }
                 return data.users || [];
             } else {
-                console.error(`Ошибка получения рекомендаций: ${response.status}`);
+                console.error(`Suggestions fetch error: ${response.status}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при получении рекомендаций:', error.message);
+            console.error('Exception getting suggestions:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -412,15 +412,15 @@ export class UsersManager {
         }
     }
     
-    // ========== USER-FRIENDLY МЕТОДЫ ==========
-    
-    // getMyProfile() уже реализован выше (строка 60) - это удобный метод по умолчанию
-    
+// ========== USER-FRIENDLY METHODS ==========
+
+    // getMyProfile() is already implemented above — default convenience method
+
     /**
-     * Проверяет, подписан ли текущий пользователь на указанного (удобный метод)
-     * 
-     * @param {string} username - Имя пользователя для проверки
-     * @returns {Promise<boolean>} True если подписан, false если нет или ошибка
+     * Checks if current user follows the given user
+     *
+     * @param {string} username - Username to check
+     * @returns {Promise<boolean>} True if following, false otherwise or on error
      */
     async isFollowing(username) {
         if (!await this.client.auth.checkAuth()) {
@@ -431,9 +431,9 @@ export class UsersManager {
     }
     
     /**
-     * Получает количество своих подписчиков (удобный метод)
-     * 
-     * @returns {Promise<number>} Количество подписчиков
+     * Gets own followers count
+     *
+     * @returns {Promise<number>} Followers count
      */
     async getMyFollowersCount() {
         const profile = await this.getMyProfile();
@@ -441,9 +441,9 @@ export class UsersManager {
     }
     
     /**
-     * Получает количество своих подписок (удобный метод)
-     * 
-     * @returns {Promise<number>} Количество подписок
+     * Gets own following count
+     *
+     * @returns {Promise<number>} Following count
      */
     async getMyFollowingCount() {
         const profile = await this.getMyProfile();
@@ -451,9 +451,9 @@ export class UsersManager {
     }
     
     /**
-     * Получает свой клан (эмодзи аватара) (удобный метод)
-     * 
-     * @returns {Promise<string|null>} Эмодзи клана или null
+     * Gets own clan (avatar emoji)
+     *
+     * @returns {Promise<string|null>} Clan emoji or null
      */
     async getMyClan() {
         const profile = await this.getMyProfile();

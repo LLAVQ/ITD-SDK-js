@@ -1,5 +1,5 @@
 /**
- * Модуль для работы с файлами
+ * File operations module
  */
 import fs from 'fs';
 import FormData from 'form-data';
@@ -11,29 +11,27 @@ export class FilesManager {
     }
 
     /**
-     * Загружает файл на сервер. POST /api/files/upload.
-     * Поддерживает изображения и аудио (audio/ogg для голосовых в комментариях).
-     * Таймаут — client.uploadTimeout (по умолчанию 120 с). При ошибке возвращает null.
+     * Uploads file to server. POST /api/files/upload.
+     * Supports images and audio (audio/ogg for voice comments).
+     * Timeout — client.uploadTimeout (default 120 s). Returns null on error.
      *
-     * @param {string} filePath - Путь к файлу
-     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } или null при ошибке
+     * @param {string} filePath - Path to file
+     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size } or null on error
      */
     async uploadFile(filePath) {
         if (!await this.client.auth.checkAuth()) {
-            console.error('Ошибка: необходимо войти в аккаунт');
+            console.error('Error: must be logged in');
             return null;
         }
 
         try {
-            // Проверка существования файла
             if (!fs.existsSync(filePath)) {
-                console.error(`Ошибка: файл ${filePath} не найден`);
+                console.error(`Error: file ${filePath} not found`);
                 return null;
             }
 
             const uploadUrl = `${this.client.baseUrl}/api/files/upload`;
-            
-            // Создаем FormData для multipart/form-data
+
             const formData = new FormData();
             formData.append('file', fs.createReadStream(filePath));
 
@@ -45,13 +43,13 @@ export class FilesManager {
             });
 
             if (response.status === 200 || response.status === 201) {
-                return response.data; // { id, url, filename, mimeType, size }
+                return response.data;
             } else {
-                console.error(`Ошибка загрузки файла: ${response.status} - ${JSON.stringify(response.data)}`);
+                console.error(`File upload error: ${response.status} - ${JSON.stringify(response.data)}`);
                 return null;
             }
         } catch (error) {
-            console.error('Исключение при загрузке файла:', error.message);
+            console.error('Exception during file upload:', error.message);
             if (error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
@@ -61,10 +59,10 @@ export class FilesManager {
     }
 
     /**
-     * Получает информацию о файле. GET /api/files/{id}
+     * Gets file info. GET /api/files/{id}
      *
-     * @param {string} fileId - ID файла
-     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size, ... } или null
+     * @param {string} fileId - File ID
+     * @returns {Promise<Object|null>} { id, url, filename, mimeType, size, ... } or null
      */
     async getFile(fileId) {
         if (!await this.client.auth.checkAuth()) return null;
@@ -76,16 +74,16 @@ export class FilesManager {
             }
             return null;
         } catch (error) {
-            console.error('Ошибка получения файла:', error.message);
+            console.error('Error getting file:', error.message);
             return null;
         }
     }
 
     /**
-     * Удаляет файл. DELETE /api/files/{id}
+     * Deletes file. DELETE /api/files/{id}
      *
-     * @param {string} fileId - ID файла
-     * @returns {Promise<boolean>} True если успешно
+     * @param {string} fileId - File ID
+     * @returns {Promise<boolean>} True on success
      */
     async deleteFile(fileId) {
         if (!await this.client.auth.checkAuth()) return false;
@@ -94,7 +92,7 @@ export class FilesManager {
             const response = await this.axios.delete(url);
             return response.status === 200 || response.status === 204;
         } catch (error) {
-            console.error('Ошибка удаления файла:', error.message);
+            console.error('Error deleting file:', error.message);
             return false;
         }
     }
