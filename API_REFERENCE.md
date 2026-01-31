@@ -53,15 +53,35 @@
 | POST/DELETE | `/api/comments/{id}/like` | Лайк/снять лайк на комментарий или реплай → `{ liked, likesCount }` |
 | POST | `/api/users/{username}/follow` | Подписаться → `{ following: true, followersCount }` |
 | DELETE | `/api/users/{username}/follow` | Отписаться → `{ following: false, followersCount }` |
+| POST | `/api/notifications/{id}/read` | Отметить одно уведомление прочитанным |
+| GET | `/api/notifications/count` | Счётчик непрочитанных |
 
 ### Эндпоинты без подтверждения
 
 | Метод | Эндпоинт | Используется в |
 |-------|----------|----------------|
 | GET | `/api/posts?tab=popular` / `tab=following` | `getFeedPopular`, `getFeedFollowing` — в веб-интерфейсе нет переключения |
-| POST | `/api/notifications/{id}/read` | `markNotificationAsRead` |
-| GET | `/api/notifications/count` | `getNotificationCount`, `hasUnreadNotifications` |
 | GET | `/api/search/?q=&userLimit=&hashtagLimit=` | `search`, `searchUsers`, `searchHashtags` |
+| GET | `/api/notifications/stream` | SSE‑стрим уведомлений (не реализован в SDK) |
+
+### Официальные роуты с сайта
+
+Список эндпоинтов из фронтенда (итд.com):
+
+| Группа | Эндпоинт | SDK |
+|--------|----------|-----|
+| **auth** (`/api/v1/auth`) | sign-up, sign-in, verify-otp, resend-otp, refresh, logout, change-password, forgot-password, reset-password, login/yandex, login/google | refresh, logout, change-password |
+| **users** | me, profile(id), updateProfile, privacy, follow(id), followers(id), following(id), who-to-follow, top-clans, search | ✓ |
+| **posts** | list, single(id), create, update(id), delete(id), restore(id), like(id), repost(id), view(id), pin(id), byUser(id), likedByUser(id), wallByUser(id), comments(id) | ✓ |
+| **comments** | delete(id), restore(id), like(id), replies(id) | ✓ |
+| **notifications** | list, count, markRead(id), markReadBatch, markAllRead, **stream** | без stream |
+| **files** | upload, get(id), delete(id) | ✓ |
+| **reports** | create | ✓ |
+| **hashtags** | search, trending, posts(name) | без search |
+| **search** | global | ✓ |
+| **verification** | status, submit | ✓ |
+
+В SDK нет: sign-up/sign-in (поток браузера), verify-otp/resend-otp, forgot/reset-password, OAuth (yandex/google), notifications/stream, users/search, hashtags/search.
 
 Если какой‑то метод возвращает ошибку — проверь эндпоинт в DevTools.
 
@@ -338,13 +358,29 @@ const post = await client.createPost('Текст поста', 'image.jpg');
 
 - **Параметры**: `limit` (по умолчанию 20), `offset` (смещение для пагинации), `type` (фильтр на клиенте).
 
+**Типы уведомлений** (поле `type`, объект содержит `actor`, `targetId`, `preview` и др.):
+
+| type | Описание |
+|------|----------|
+| `like` | Кто-то оценил пост |
+| `comment` | Кто-то прокомментировал пост |
+| `reply` | Кто-то ответил на комментарий |
+| `follow` | Кто-то подписался |
+| `repost` | Кто-то сделал репост |
+| `mention` | Кто-то упомянул в посте |
+| `wall_post` | Кто-то написал на стене |
+| `verification_approved` | Заявка на верификацию одобрена |
+| `verification_rejected` | Заявка отклонена (есть `preview` — причина) |
+
+**Ссылки**: `follow` → профиль актора; `verification_approved` / `verification_rejected` → `/settings`; иначе при наличии `targetId` → пост.
+
 ### Прочие методы уведомлений
 
 - `getNotificationsByType(type, limit, offset)` — уведомления конкретного типа. Возвращает `{ notifications: [], hasMore }`.
-- `markNotificationAsRead(notificationId)` — пометка одного прочитанным. ⚠️ Эндпоинт POST `/api/notifications/{id}/read` **не подтверждён**.
+- `markNotificationAsRead(notificationId)` — пометка одного прочитанным. POST `/api/notifications/{id}/read`.
 - `markNotificationsAsReadBatch(ids)` — пометка нескольких. POST `/api/notifications/read-batch` → `{ success: true, count }`.
 - `markAllNotificationsAsRead()` — пометка всех. POST `/api/notifications/read-all` → `{ success: true }`.
-- `getNotificationCount()` — счетчик непрочитанных. ⚠️ Эндпоинт GET `/api/notifications/count` **не подтверждён**. Альтернатива: `hasUnread` можно вычислить по `getNotifications()` (поле `read` у каждого).
+- `getNotificationCount()` — счетчик непрочитанных. GET `/api/notifications/count`. Альтернатива: `hasUnread` можно вычислить по `getNotifications()` (поле `read` у каждого).
 
 ### Поиск и рекомендации
 
